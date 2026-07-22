@@ -1,0 +1,42 @@
+/* Spotistics 실데이터 연동 영역 */
+.api-live-card{
+  margin:0 0 18px;
+  padding:20px 22px;
+  border:1px solid color-mix(in srgb,var(--primary) 24%,var(--line));
+  border-radius:26px;
+  background:linear-gradient(135deg,color-mix(in srgb,var(--primary) 7%,#fff),#fff);
+  box-shadow:var(--shadow);
+}
+.api-live-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;margin-bottom:16px}
+.api-live-title{display:flex;align-items:center;gap:10px}
+.api-live-title h2{margin:0;font-size:24px;letter-spacing:-.5px}
+.api-live-title p{margin:4px 0 0;color:var(--muted);font-size:14px}
+.api-live-badge{display:inline-flex;align-items:center;gap:6px;padding:8px 11px;border-radius:999px;background:#fff;border:1px solid var(--line);font-size:12px;color:var(--muted);white-space:nowrap}
+.api-live-badge::before{content:"";width:8px;height:8px;border-radius:50%;background:#94a3b8}
+.api-live-badge.is-live::before{background:#16a34a;box-shadow:0 0 0 5px rgba(22,163,74,.12)}
+.api-prob-wrap{display:grid;grid-template-columns:auto minmax(160px,1fr) auto;gap:14px;align-items:center}
+.api-prob-team{min-width:92px}
+.api-prob-team:last-child{text-align:right}
+.api-prob-team strong{display:block;font-size:18px}
+.api-prob-team b{display:block;margin-top:3px;font-size:30px;color:var(--primary)}
+.api-prob-track{height:22px;display:flex;overflow:hidden;border-radius:999px;background:#e8eef7;border:1px solid var(--line)}
+.api-prob-away,.api-prob-home{height:100%;transition:width .35s ease}
+.api-prob-away{background:color-mix(in srgb,var(--primary) 45%,#94a3b8)}
+.api-prob-home{background:var(--primary)}
+.api-live-foot{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-top:14px;color:var(--muted);font-size:13px}
+.api-refresh{border:0;background:transparent;color:var(--primary);font-weight:950;padding:4px 0}
+.api-error{padding:13px 15px;border-radius:16px;background:#fff7ed;color:#9a3412;border:1px solid #fed7aa;font-size:14px;line-height:1.45}
+.game.api-loading{opacity:.78}
+.game .api-score{font-size:24px;color:var(--primary);margin:0 6px}
+.game .api-state{display:inline-flex;margin-left:8px;padding:4px 8px;border-radius:999px;background:color-mix(in srgb,var(--primary) 10%,#fff);color:var(--primary);font-size:12px;vertical-align:middle}
+@media(max-width:700px){
+  .api-live-card{padding:17px 15px;border-radius:22px}
+  .api-live-head{align-items:center}
+  .api-live-title h2{font-size:20px}
+  .api-live-badge{padding:7px 9px}
+  .api-prob-wrap{grid-template-columns:1fr 1fr;gap:10px}
+  .api-prob-track{grid-column:1/-1;grid-row:2;height:18px}
+  .api-prob-team{min-width:0}
+  .api-prob-team b{font-size:25px}
+  .api-live-foot{align-items:flex-start;flex-direction:column}
+}
