@@ -579,7 +579,9 @@
   }
 
   function playView() {
-    const filtered = eligiblePlayers().filter((player) => player.type === 'batter' && (state.teamFilter === 'ALL' || player.teamCode === state.teamFilter));
+    const batterPool = state.players.filter((player) => player.type === 'batter');
+    const selectable = batterPool.length ? batterPool : eligiblePlayers().filter((player) => player.type === 'batter');
+    const filtered = selectable.filter((player) => state.teamFilter === 'ALL' || player.teamCode === state.teamFilter);
     const players = [...filtered].sort((a, b) => a.teamCode.localeCompare(b.teamCode) || a.name.localeCompare(b.name, 'ko'));
     const visible = players.slice(0, state.fullLimit);
     return `<section class="hh-play-view">
@@ -878,7 +880,13 @@
     }
   }
 
-  window.KBOHeroHorror = { reload: load, getState: () => ({ ...state }) };
+  window.KBOHeroHorror = { reload: load, render, getState: () => ({ ...state }) };
+  document.addEventListener('kbo:modechange', () => {
+    state.viewMode = isPlusMode() ? state.viewMode : 'recommend';
+    state.teamFilter = 'ALL';
+    state.fullLimit = 8;
+    render();
+  });
   window.renderPlayers = render;
   window.choosePlayer = (id, type) => choose(String(type).toLowerCase(), String(id));
   document.addEventListener('DOMContentLoaded', load);
