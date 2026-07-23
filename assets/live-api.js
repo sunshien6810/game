@@ -164,6 +164,7 @@
   ];
 
   const HOME_PROBABILITY_KEYS = [
+    'home_win_pct',
     'home_win_probability',
     'homeWinProbability',
     'home_win_prob',
@@ -175,6 +176,7 @@
   ];
 
   const AWAY_PROBABILITY_KEYS = [
+    'away_win_pct',
     'away_win_probability',
     'awayWinProbability',
     'away_win_prob',
@@ -260,6 +262,23 @@
       : String(value).trim();
   }
 
+  function teamNameValue(value, fallback = '') {
+    if (value === undefined || value === null || value === '') return fallback;
+    if (typeof value === 'string' || typeof value === 'number') {
+      return String(value).trim() || fallback;
+    }
+    if (typeof value === 'object') {
+      const nested = getByCandidates(value, [
+        'team_name', 'teamName', 'name', 'short_name', 'shortName',
+        'team_code', 'teamCode', 'code', 'abbr', 'team',
+      ]);
+      if (nested !== undefined && nested !== value) {
+        return teamNameValue(nested, fallback);
+      }
+    }
+    return fallback;
+  }
+
   function normalizeGamePayload(payload) {
     const raw = findFirstGameRecord(payload);
 
@@ -274,7 +293,7 @@
 
     return {
       id,
-      awayTeam: textValue(
+      awayTeam: teamNameValue(
         getByCandidates(raw, [
           'away_team_name',
           'awayTeamName',
@@ -292,7 +311,7 @@
         ]),
         '원정팀'
       ),
-      homeTeam: textValue(
+      homeTeam: teamNameValue(
         getByCandidates(raw, [
           'home_team_name',
           'homeTeamName',
@@ -381,7 +400,7 @@
     if (home === null || away === null) {
       debug('승리확률 필드 탐색 실패', payload);
       throw new Error(
-        '승리확률 응답에서 확률 필드를 찾지 못했습니다. 개발자 도구 Console의 승리확률 API 응답을 확인하세요.'
+        '승부 예측 응답에서 home_win_pct 또는 away_win_pct 필드를 찾지 못했습니다. 개발자 도구 Console의 승리확률 API 응답을 확인하세요.'
       );
     }
 
@@ -395,6 +414,14 @@
     return {
       home: Math.max(0, Math.min(100, home)),
       away: Math.max(0, Math.min(100, away)),
+      homeTeam: teamNameValue(
+        getByCandidates(raw, ['home_team', 'homeTeam', 'home_team_name', 'homeTeamName']),
+        game.homeTeam
+      ),
+      awayTeam: teamNameValue(
+        getByCandidates(raw, ['away_team', 'awayTeam', 'away_team_name', 'awayTeamName']),
+        game.awayTeam
+      ),
       inning: textValue(
         getByCandidates(raw, [
           'inning',
@@ -455,11 +482,13 @@
       probability &&
       probability.awayScore !== null &&
       probability.homeScore !== null;
+    const awayTeam = probability?.awayTeam || game.awayTeam;
+    const homeTeam = probability?.homeTeam || game.homeTeam;
 
     match.innerHTML = `
       <div class="team">
-        <div class="logo">${teamEmoji(game.awayTeam)}</div>
-        <b>${game.awayTeam}</b>
+        <div class="logo">${teamEmoji(awayTeam)}</div>
+        <b>${awayTeam}</b>
       </div>
       <div class="vs">
         ${
@@ -469,8 +498,8 @@
         }
       </div>
       <div class="team">
-        <div class="logo">${teamEmoji(game.homeTeam)}</div>
-        <b>${game.homeTeam}</b>
+        <div class="logo">${teamEmoji(homeTeam)}</div>
+        <b>${homeTeam}</b>
       </div>
     `;
 
@@ -510,8 +539,8 @@
         <div class="api-live-head">
           <div class="api-live-title">
             <div>
-              <h2>실시간 승리확률</h2>
-              <p>Spotistics 데이터 연결</p>
+              <h2>승부 예측</h2>
+              <p>Spotistics 경기 예측 데이터</p>
             </div>
           </div>
           <span class="api-live-badge">연결 확인</span>
@@ -528,38 +557,40 @@
 
     const away = probability.away.toFixed(1);
     const home = probability.home.toFixed(1);
+    const awayTeam = probability.awayTeam || game.awayTeam;
+    const homeTeam = probability.homeTeam || game.homeTeam;
 
     card.innerHTML = `
       <div class="api-live-head">
         <div class="api-live-title">
           <div>
-            <h2>실시간 승리확률</h2>
+            <h2>승부 예측</h2>
             <p>${game.id} · 첫 번째 경기 기준</p>
           </div>
         </div>
-        <span class="api-live-badge is-live">LIVE DATA</span>
+        <span class="api-live-badge is-live">PREDICTION</span>
       </div>
       <div class="api-prob-wrap">
         <div class="api-prob-team">
-          <strong>${game.awayTeam}</strong>
+          <strong>${awayTeam}</strong>
           <b>${away}%</b>
         </div>
         <div
           class="api-prob-track"
-          aria-label="승리확률 ${game.awayTeam} ${away}%, ${game.homeTeam} ${home}%"
+          aria-label="승부 예측 ${awayTeam} ${away}%, ${homeTeam} ${home}%"
         >
           <div class="api-prob-away" style="width:${away}%"></div>
           <div class="api-prob-home" style="width:${home}%"></div>
         </div>
         <div class="api-prob-team">
-          <strong>${game.homeTeam}</strong>
+          <strong>${homeTeam}</strong>
           <b>${home}%</b>
         </div>
       </div>
       <div class="api-live-foot">
         <span>
           ${probability.inning || statusText(game)}
-          · ${state.lastUpdatedAt?.toLocaleTimeString('ko-KR') || ''} 갱신
+          · ${state.lastUpdatedAt?.toLocaleTimeString('ko-KR') || ''} 기준
         </span>
         <button class="api-refresh" type="button">새로고침</button>
       </div>`;
