@@ -1,5 +1,5 @@
 
-/* v31 Service Structure: user -> game -> prediction -> participation */
+/* v31.2 Service Structure: user -> integrated game prediction -> participation */
 .my-status-card{
   margin:28px auto 18px;
   max-width:1180px;
@@ -24,15 +24,8 @@
 .my-status-stat b{display:block;color:var(--primary);font-size:24px;line-height:1.1}
 .my-status-stat span{display:block;margin-top:5px;color:var(--muted);font-size:13px;font-weight:850}
 
-.game{max-width:1180px;margin:0 auto 18px!important}
-.game .stats{display:none!important}
-.game:before{
-  content:"오늘의 경기";display:block;color:var(--primary);font-size:13px;font-weight:950;
-  letter-spacing:.08em;margin-bottom:12px
-}
-.game .match{justify-content:center}
-.game .meta{text-align:center}
-.game .api-starter-row{margin-top:16px}
+/* 오늘의 경기 정보는 승부 예측 카드에 통합 */
+.game{display:none!important}
 
 #home .home-grid{display:none!important}
 #home{min-height:420px}
@@ -54,17 +47,6 @@
 .home-action b{display:block;font-size:20px;margin-top:8px}
 .home-action small{display:block;color:var(--muted);margin-top:4px;font-weight:750}
 
-.ai-pick-home{
-  display:none;margin-top:18px;border:1px solid color-mix(in srgb,var(--primary) 30%,var(--line));
-  background:linear-gradient(135deg,var(--primary-soft),#fff);border-radius:28px;padding:22px
-}
-.mode-plus .ai-pick-home{display:block}
-.ai-pick-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px;align-items:center}
-.ai-pick-home h2{margin:0;font-size:23px}
-.ai-pick-home p{margin:6px 0 0;color:var(--muted);line-height:1.5}
-.ai-pick-tags{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px}
-.ai-pick-tags span{border-radius:999px;background:#fff;border:1px solid var(--primary-line);padding:7px 10px;font-size:13px;font-weight:900}
-.ai-pick-btn{border:0;border-radius:18px;background:var(--primary);color:#fff;padding:14px 18px;font-weight:950;cursor:pointer;white-space:nowrap}
 
 .mode-play #categoryTabs .category-tab:nth-child(4),
 .mode-play #categoryTabsSheet .category-tab:nth-child(4){display:none!important}
@@ -82,10 +64,7 @@ body:not(.home-active) .game{display:none!important}
   }
   .my-status-main{grid-column:1/-1}
   .my-status-stat:last-child{grid-column:1/-1}
-  .game{margin:0 16px 14px!important}
   .home-action-grid{grid-template-columns:1fr 1fr}
-  .ai-pick-row{grid-template-columns:1fr}
-  .ai-pick-btn{width:100%}
 }
 @media(max-width:520px){
   .my-status-card{grid-template-columns:1fr 1fr;gap:9px}
@@ -93,5 +72,5 @@ body:not(.home-active) .game{display:none!important}
   .my-status-stat{padding:12px 8px}
   .my-status-stat b{font-size:20px}
   .home-action-grid{grid-template-columns:1fr}
-  .home-action-card,.ai-pick-home{padding:18px;border-radius:24px}
+  .home-action-card{padding:18px;border-radius:24px}
 }

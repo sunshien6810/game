@@ -47,22 +47,6 @@
     }
   }
 
-  function applyAiPick() {
-    try {
-      if (typeof window.setCategory === 'function') {
-        window.setCategory('mixed');
-      }
-
-      if (typeof window.recommend === 'function') {
-        window.recommend();
-      }
-
-      goToTab('bingo');
-    } catch (error) {
-      console.error('[Service Structure] AI Pick 적용 오류', error);
-    }
-  }
-
   function createHomeActions() {
     const home = qs('#home');
     if (!home || qs('.home-action-card', home)) return;
@@ -91,24 +75,6 @@
     `;
     home.appendChild(action);
 
-    const pick = document.createElement('section');
-    pick.className = 'ai-pick-home';
-    pick.innerHTML = `
-      <div class="ai-pick-row">
-        <div>
-          <h2>🤖 AI Pick</h2>
-          <p>승부 예측과 경기 데이터를 참고해 오늘의 추천 미션 9개를 자동 구성합니다. Beta 일정에 따라 기능 노출을 끌 수 있습니다.</p>
-          <div class="ai-pick-tags">
-            <span>선발 6이닝+</span>
-            <span>삼진 10개+</span>
-            <span>멀티히트</span>
-            <span>세이브 성공</span>
-          </div>
-        </div>
-        <button class="ai-pick-btn" type="button">AI Pick 바로 적용</button>
-      </div>
-    `;
-    home.appendChild(pick);
 
     action.addEventListener('click', (event) => {
       const button = event.target.closest('[data-service-go]');
@@ -116,10 +82,6 @@
       goToTab(button.dataset.serviceGo);
     });
 
-    const aiButton = qs('.ai-pick-btn', pick);
-    if (aiButton) {
-      aiButton.addEventListener('click', applyAiPick);
-    }
   }
 
   function syncHomeVisibility() {
@@ -239,7 +201,7 @@
     syncHomeVisibility();
     observeRelevantChanges();
 
-    console.info('[Service Structure] v31.1 initialized');
+    console.info('[Service Structure] v31.2 initialized');
   }
 
   if (document.readyState === 'loading') {

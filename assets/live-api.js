@@ -812,7 +812,7 @@
     if (errorMessage) {
       card.innerHTML = `
         <div class="api-live-head">
-          <div class="api-live-title"><div><h2>승부 예측</h2><p>Spotistics 경기 예측 데이터</p></div></div>
+          <div class="api-live-title"><div><h2>오늘의 경기 승부 예측</h2><p>Spotistics 경기 예측 데이터</p></div></div>
           <span class="api-live-badge">연결 확인</span>
         </div>
         <div class="api-error">${escapeHtml(errorMessage)}</div>
@@ -838,8 +838,14 @@
       <div class="api-live-head">
         <div class="api-live-title">
           <div>
-            <h2>승부 예측</h2>
-            <p>${escapeHtml(awayTeam)} vs ${escapeHtml(homeTeam)} · 경기 전 예측 모델 기준</p>
+            <h2>오늘의 경기 승부 예측</h2>
+            <p>${escapeHtml([
+              `${awayTeam} vs ${homeTeam}`,
+              game.gameTime,
+              game.stadium,
+              statusText(game),
+              '경기 전 예측 모델 기준'
+            ].filter(Boolean).join(' · '))}</p>
           </div>
         </div>
         <span class="api-live-badge is-live">PREDICTION</span>
