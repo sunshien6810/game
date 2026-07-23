@@ -3,6 +3,8 @@
 
   const CONFIG = {
     baseUrl: 'https://dataapi.spotistics.com',
+    teamImageBase: 'https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/emblem/regular/2025',
+    playerImageBase: 'https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/kbo/2026',
     refreshMs: 30000,
     requestTimeoutMs: 12000,
     debug: true,
@@ -262,6 +264,22 @@
       : String(value).trim();
   }
 
+  function escapeHtml(value) {
+    return String(value ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  function formatGameTime(value) {
+    const raw = textValue(value).replace(/[^0-9]/g, '');
+    if (raw.length === 4) return `${raw.slice(0, 2)}:${raw.slice(2)}`;
+    if (raw.length === 3) return `0${raw.slice(0, 1)}:${raw.slice(1)}`;
+    return textValue(value);
+  }
+
   function teamNameValue(value, fallback = '') {
     if (value === undefined || value === null || value === '') return fallback;
     if (typeof value === 'string' || typeof value === 'number') {
@@ -279,6 +297,107 @@
     return fallback;
   }
 
+  function teamCodeValue(value, teamName = '') {
+    if (value && typeof value === 'object') {
+      const nested = getByCandidates(value, [
+        'team_code', 'teamCode', 'code', 'abbr', 'short_code', 'shortCode',
+        'team_id', 'teamId', 'id',
+      ]);
+      if (nested !== undefined && nested !== value) {
+        const code = textValue(nested).toUpperCase();
+        if (code) return code;
+      }
+    }
+
+    const name = String(teamName || value || '').toUpperCase().replace(/\s/g, '');
+    const aliases = [
+      [['LG', '엘지'], 'LG'],
+      [['한화', 'HANWHA', 'HH'], 'HH'],
+      [['두산', 'DOOSAN', 'OB'], 'OB'],
+      [['삼성', 'SAMSUNG', 'SS'], 'SS'],
+      [['KIA', '기아', '해태', 'HT'], 'HT'],
+      [['롯데', 'LOTTE', 'LT'], 'LT'],
+      [['SSG', 'SK'], 'SK'],
+      [['KT', '케이티', 'KTWIZ'], 'KT'],
+      [['NC', '엔씨'], 'NC'],
+      [['키움', 'KIWOOM', 'WO', '넥센'], 'WO'],
+    ];
+
+    return aliases.find(([keys]) =>
+      keys.some((key) => name.includes(String(key).toUpperCase()))
+    )?.[1] || '';
+  }
+
+  function teamLogoUrl(code) {
+    return code ? `${CONFIG.teamImageBase}/emblem_${encodeURIComponent(code)}.png` : '';
+  }
+
+  function playerImageUrl(playerId) {
+    return playerId
+      ? `${CONFIG.playerImageBase}/${encodeURIComponent(playerId)}.png`
+      : '';
+  }
+
+  function playerValue(value, fallbackName = '') {
+    if (value === undefined || value === null || value === '') {
+      return { id: '', name: fallbackName };
+    }
+
+    if (typeof value === 'string' || typeof value === 'number') {
+      return { id: '', name: textValue(value, fallbackName) };
+    }
+
+    if (typeof value === 'object') {
+      const id = textValue(getByCandidates(value, [
+        'player_id', 'playerId', 'person_id', 'personId', 'pitcher_id',
+        'pitcherId', 'id', 'pcode', 'player_code', 'playerCode',
+      ]));
+      const name = textValue(getByCandidates(value, [
+        'player_name', 'playerName', 'person_name', 'personName',
+        'pitcher_name', 'pitcherName', 'name', 'kor_name', 'korName',
+      ]), fallbackName);
+      return { id, name };
+    }
+
+    return { id: '', name: fallbackName };
+  }
+
+  function starterFromRaw(raw, side) {
+    const sidePrefixes = side === 'home'
+      ? ['home', 'h']
+      : ['away', 'visit', 'visitor', 'v', 'a'];
+
+    const objectCandidates = [];
+    const idCandidates = [];
+    const nameCandidates = [];
+
+    for (const prefix of sidePrefixes) {
+      objectCandidates.push(
+        `${prefix}_starter`, `${prefix}Starter`, `${prefix}_starting_pitcher`,
+        `${prefix}StartingPitcher`, `${prefix}_starting_pitcher_info`,
+        `${prefix}StartingPitcherInfo`, `${prefix}_pitcher`, `${prefix}Pitcher`,
+        `${prefix}_sp`, `${prefix}Sp`
+      );
+      idCandidates.push(
+        `${prefix}_starter_id`, `${prefix}StarterId`, `${prefix}_starting_pitcher_id`,
+        `${prefix}StartingPitcherId`, `${prefix}_pitcher_id`, `${prefix}PitcherId`,
+        `${prefix}_sp_id`, `${prefix}SpId`, `${prefix}_starter_code`, `${prefix}StarterCode`
+      );
+      nameCandidates.push(
+        `${prefix}_starter_name`, `${prefix}StarterName`, `${prefix}_starting_pitcher_name`,
+        `${prefix}StartingPitcherName`, `${prefix}_pitcher_name`, `${prefix}PitcherName`,
+        `${prefix}_sp_name`, `${prefix}SpName`
+      );
+    }
+
+    const objectValue = getByCandidates(raw, objectCandidates);
+    const parsed = playerValue(objectValue);
+    const directId = textValue(getByCandidates(raw, idCandidates), parsed.id);
+    const directName = textValue(getByCandidates(raw, nameCandidates), parsed.name);
+
+    return { id: directId, name: directName };
+  }
+
   function normalizeGamePayload(payload) {
     const raw = findFirstGameRecord(payload);
 
@@ -291,95 +410,48 @@
       );
     }
 
+    const awayTeamRaw = getByCandidates(raw, [
+      'away_team_name', 'awayTeamName', 'away_team', 'awayTeam',
+      'visit_team_name', 'visitTeamName', 'visitor_team_name', 'visitor',
+      'away', 'vteam_name', 'vteam', 'away_name', '원정팀',
+    ]);
+    const homeTeamRaw = getByCandidates(raw, [
+      'home_team_name', 'homeTeamName', 'home_team', 'homeTeam', 'home',
+      'hteam_name', 'hteam', 'home_name', '홈팀',
+    ]);
+
+    const awayTeam = teamNameValue(awayTeamRaw, '원정팀');
+    const homeTeam = teamNameValue(homeTeamRaw, '홈팀');
+
     return {
       id,
-      awayTeam: teamNameValue(
-        getByCandidates(raw, [
-          'away_team_name',
-          'awayTeamName',
-          'away_team',
-          'awayTeam',
-          'visit_team_name',
-          'visitTeamName',
-          'visitor_team_name',
-          'visitor',
-          'away',
-          'vteam_name',
-          'vteam',
-          'away_name',
-          '원정팀',
-        ]),
-        '원정팀'
-      ),
-      homeTeam: teamNameValue(
-        getByCandidates(raw, [
-          'home_team_name',
-          'homeTeamName',
-          'home_team',
-          'homeTeam',
-          'home',
-          'hteam_name',
-          'hteam',
-          'home_name',
-          '홈팀',
-        ]),
-        '홈팀'
-      ),
-      awayScore: numberValue(
-        getByCandidates(raw, [
-          'away_score',
-          'awayScore',
-          'visit_score',
-          'visitScore',
-          'vscore',
-        ])
-      ),
-      homeScore: numberValue(
-        getByCandidates(raw, [
-          'home_score',
-          'homeScore',
-          'hscore',
-        ])
-      ),
-      gameTime: textValue(
-        getByCandidates(raw, [
-          'game_time',
-          'gameTime',
-          'start_time',
-          'startTime',
-          'time',
-        ])
-      ),
-      stadium: textValue(
-        getByCandidates(raw, [
-          'stadium',
-          'stadium_name',
-          'stadiumName',
-          'ballpark',
-          'ground_name',
-          'groundName',
-        ])
-      ),
-      status: textValue(
-        getByCandidates(raw, [
-          'game_status',
-          'gameStatus',
-          'status',
-          'state',
-          'game_state',
-          'gameState',
-        ])
-      ),
-      inning: textValue(
-        getByCandidates(raw, [
-          'inning',
-          'current_inning',
-          'currentInning',
-          'inning_text',
-          'inningText',
-          'inning_status',
-        ])
-      ),
+      awayTeam,
+      homeTeam,
+      awayTeamCode: teamCodeValue(awayTeamRaw, awayTeam),
+      homeTeamCode: teamCodeValue(homeTeamRaw, homeTeam),
+      awayStarter: starterFromRaw(raw, 'away'),
+      homeStarter: starterFromRaw(raw, 'home'),
+      awayScore: numberValue(getByCandidates(raw, [
+        'away_score', 'awayScore', 'visit_score', 'visitScore', 'vscore',
+      ])),
+      homeScore: numberValue(getByCandidates(raw, [
+        'home_score', 'homeScore', 'hscore',
+      ])),
+      gameTime: formatGameTime(getByCandidates(raw, [
+        'game_time', 'gameTime', 'start_time', 'startTime', 'time',
+      ])),
+      stadium: textValue(getByCandidates(raw, [
+        'stadium', 'stadium_name', 'stadiumName', 'ballpark',
+        'ground_name', 'groundName',
+      ])),
+      status: textValue(getByCandidates(raw, [
+        'game_status', 'gameStatus', 'status', 'state',
+        'game_state', 'gameState',
+      ])),
+      inning: textValue(getByCandidates(raw, [
+        'inning', 'current_inning', 'currentInning', 'inning_text',
+        'inningText', 'inning_status',
+      ])),
       raw,
     };
   }
@@ -444,30 +516,34 @@
     };
   }
 
-  function teamEmoji(name) {
-    const team = String(name || '').toUpperCase();
-    const map = [
-      [['LG', '엘지'], '🦖'],
-      [['한화', 'HANWHA', 'HH'], '🦅'],
-      [['두산', 'DOOSAN', 'OB'], '🐻'],
-      [['삼성', 'SAMSUNG', 'SS'], '🦁'],
-      [['KIA', '기아', '해태'], '🐯'],
-      [['롯데', 'LOTTE', 'LT'], '🕊️'],
-      [['SSG', 'SK'], '🚀'],
-      [['KT', '케이티'], '🧙'],
-      [['NC', '엔씨'], '🦕'],
-      [['키움', 'KIWOOM', 'WO'], '🦸'],
-    ];
-
-    return (
-      map.find(([keys]) =>
-        keys.some((key) => team.includes(String(key).toUpperCase()))
-      )?.[1] || '⚾'
-    );
-  }
-
   function statusText(game) {
     return `${game.status || ''} ${game.inning || ''}`.trim() || '경기 정보';
+  }
+
+  function teamLogoMarkup(teamName, teamCode) {
+    const src = teamLogoUrl(teamCode);
+    if (!src) return '<span class="api-logo-fallback">⚾</span>';
+
+    return `<img class="api-team-logo" src="${escapeHtml(src)}" alt="${escapeHtml(teamName)} 엠블럼" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'api-logo-fallback',textContent:'⚾'}))">`;
+  }
+
+  function starterMarkup(starter, teamName) {
+    if (!starter?.name && !starter?.id) return '';
+
+    const image = playerImageUrl(starter.id);
+    return `
+      <div class="api-starter-card">
+        <div class="api-starter-photo">
+          ${image
+            ? `<img src="${escapeHtml(image)}" alt="${escapeHtml(starter.name || teamName)} 선수" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'">`
+            : ''}
+          <span class="api-player-fallback" ${image ? 'style="display:none"' : ''}>⚾</span>
+        </div>
+        <div>
+          <small>${escapeHtml(teamName)} 선발</small>
+          <strong>${escapeHtml(starter.name || `선수 ${starter.id}`)}</strong>
+        </div>
+      </div>`;
   }
 
   function renderGameHeader(game, probability) {
@@ -478,40 +554,71 @@
     const meta = $('.meta', gameSection);
     if (!match || !meta) return;
 
-    const hasScore =
-      probability &&
-      probability.awayScore !== null &&
-      probability.homeScore !== null;
+    const hasScore = probability && probability.awayScore !== null && probability.homeScore !== null;
     const awayTeam = probability?.awayTeam || game.awayTeam;
     const homeTeam = probability?.homeTeam || game.homeTeam;
 
     match.innerHTML = `
       <div class="team">
-        <div class="logo">${teamEmoji(awayTeam)}</div>
-        <b>${awayTeam}</b>
+        <div class="logo api-logo-box">${teamLogoMarkup(awayTeam, game.awayTeamCode)}</div>
+        <b>${escapeHtml(awayTeam)}</b>
       </div>
       <div class="vs">
-        ${
-          hasScore
-            ? `<span class="api-score">${probability.awayScore} : ${probability.homeScore}</span>`
-            : 'VS'
-        }
+        ${hasScore
+          ? `<span class="api-score">${probability.awayScore} : ${probability.homeScore}</span>`
+          : 'VS'}
       </div>
       <div class="team">
-        <div class="logo">${teamEmoji(homeTeam)}</div>
-        <b>${homeTeam}</b>
+        <div class="logo api-logo-box">${teamLogoMarkup(homeTeam, game.homeTeamCode)}</div>
+        <b>${escapeHtml(homeTeam)}</b>
       </div>
     `;
 
-    const parts = [
-      game.gameTime,
-      game.stadium,
-      probability?.inning || game.inning,
-    ].filter(Boolean);
-
+    const parts = [game.gameTime, game.stadium, probability?.inning || game.inning].filter(Boolean);
     meta.innerHTML =
-      `${parts.join(' · ') || '오늘의 첫 번째 경기'}` +
-      `<span class="api-state">${statusText(game)}</span>`;
+      `${escapeHtml(parts.join(' · ') || '오늘의 첫 번째 경기')}` +
+      `<span class="api-state">${escapeHtml(statusText(game))}</span>`;
+
+    let starterRow = $('.api-starter-row', gameSection);
+    if (!starterRow) {
+      starterRow = document.createElement('div');
+      starterRow.className = 'api-starter-row';
+      meta.insertAdjacentElement('afterend', starterRow);
+    }
+
+    const starterHtml = [
+      starterMarkup(game.awayStarter, awayTeam),
+      starterMarkup(game.homeStarter, homeTeam),
+    ].filter(Boolean).join('');
+
+    starterRow.innerHTML = starterHtml;
+    starterRow.hidden = !starterHtml;
+  }
+
+  function predictionCommentary(game, probability) {
+    const awayTeam = probability.awayTeam || game.awayTeam;
+    const homeTeam = probability.homeTeam || game.homeTeam;
+    const diff = Math.abs(probability.home - probability.away);
+    const leader = probability.home >= probability.away ? homeTeam : awayTeam;
+    const leaderPct = Math.max(probability.home, probability.away);
+
+    let balanceText = '';
+    if (diff < 3) {
+      balanceText = '양 팀의 예측치가 매우 근접해 팽팽한 승부가 예상됩니다.';
+    } else if (diff < 10) {
+      balanceText = `${leader}가 근소하게 앞서지만 경기 흐름에 따라 충분히 뒤집힐 수 있는 구간입니다.`;
+    } else {
+      balanceText = `${leader}가 ${leaderPct.toFixed(1)}%로 비교적 우세하게 예측됩니다.`;
+    }
+
+    const starterNames = [game.awayStarter?.name, game.homeStarter?.name].filter(Boolean);
+    const starterText = starterNames.length === 2
+      ? `선발 맞대결은 ${game.awayStarter.name} 대 ${game.homeStarter.name}입니다.`
+      : starterNames.length === 1
+        ? `${starterNames[0]}의 선발 등판 정보가 반영된 경기입니다.`
+        : '';
+
+    return `${balanceText}${starterText ? ` ${starterText}` : ''}`;
   }
 
   function ensureProbabilityCard() {
@@ -565,14 +672,14 @@
         <div class="api-live-title">
           <div>
             <h2>승부 예측</h2>
-            <p>${game.id} · 첫 번째 경기 기준</p>
+            <p>${escapeHtml(game.id)} · 경기 전 예측 모델 기준</p>
           </div>
         </div>
         <span class="api-live-badge is-live">PREDICTION</span>
       </div>
       <div class="api-prob-wrap">
         <div class="api-prob-team">
-          <strong>${awayTeam}</strong>
+          <strong>${escapeHtml(awayTeam)}</strong>
           <b>${away}%</b>
         </div>
         <div
@@ -583,13 +690,17 @@
           <div class="api-prob-home" style="width:${home}%"></div>
         </div>
         <div class="api-prob-team">
-          <strong>${homeTeam}</strong>
+          <strong>${escapeHtml(homeTeam)}</strong>
           <b>${home}%</b>
         </div>
       </div>
+      <div class="api-prediction-commentary">
+        <span class="api-commentary-label">예측 코멘터리</span>
+        <p>${escapeHtml(predictionCommentary(game, probability))}</p>
+      </div>
       <div class="api-live-foot">
         <span>
-          ${probability.inning || statusText(game)}
+          ${escapeHtml(probability.inning || statusText(game))}
           · ${state.lastUpdatedAt?.toLocaleTimeString('ko-KR') || ''} 기준
         </span>
         <button class="api-refresh" type="button">새로고침</button>
