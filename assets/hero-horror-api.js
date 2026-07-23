@@ -41,6 +41,7 @@
   };
 
   const root = () => document.getElementById('heroHorrorApiRoot');
+  const isPlusMode = () => document.getElementById('app')?.classList.contains('mode-plus');
   const escapeHtml = (value) => String(value ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;').replace(/'/g, '&#039;');
@@ -565,6 +566,30 @@
     </section>`;
   }
 
+  function playPlayerCard(player) {
+    const selectedHero = state.hero === player.id;
+    const selectedHorror = state.horror === player.id;
+    return `<article class="hh-play-player ${selectedHero ? 'is-hero' : ''} ${selectedHorror ? 'is-horror' : ''}">
+      <button type="button" class="hh-play-player-main" data-detail="${player.id}">
+        ${imageMarkup(player, 'hh-play-photo')}
+        <span><small>${escapeHtml(player.teamName)} · ${escapeHtml(player.position)}</small><b>${escapeHtml(player.name)}</b>${player.number ? `<em>#${escapeHtml(player.number)}</em>` : ''}</span>
+      </button>
+      <div class="hh-play-actions"><button type="button" data-pick="hero" data-id="${player.id}" class="hero ${selectedHero ? 'active' : ''}">${selectedHero ? '✓ HERO' : 'HERO'}</button><button type="button" data-pick="horror" data-id="${player.id}" class="horror ${selectedHorror ? 'active' : ''}">${selectedHorror ? '✓ HORROR' : 'HORROR'}</button></div>
+    </article>`;
+  }
+
+  function playView() {
+    const filtered = eligiblePlayers().filter((player) => player.type === 'batter' && (state.teamFilter === 'ALL' || player.teamCode === state.teamFilter));
+    const players = [...filtered].sort((a, b) => a.teamCode.localeCompare(b.teamCode) || a.name.localeCompare(b.name, 'ko'));
+    const visible = players.slice(0, state.fullLimit);
+    return `<section class="hh-play-view">
+      <div class="hh-play-guide"><small>PLAY · NO RECOMMENDATION</small><h3>오늘은 누구일까요?</h3><p>추천 점수 없이 내 감과 응원으로 Hero와 Horror를 직접 선택하세요.</p></div>
+      <div class="hh-team-chips">${[['ALL','전체'],[state.game.awayCode,state.game.awayName],[state.game.homeCode,state.game.homeName]].map(([v,l])=>`<button data-team="${v}" class="${state.teamFilter===v?'active':''}">${escapeHtml(l)}</button>`).join('')}</div>
+      <div class="hh-play-grid">${visible.map(playPlayerCard).join('') || '<p class="hh-empty">표시할 타자가 없습니다.</p>'}</div>
+      ${visible.length < players.length ? '<button id="hhMore" class="hh-more-casting">선수 더보기</button>' : ''}
+    </section>`;
+  }
+
   function selectionBar() {
     const hero = state.players.find((p) => p.id === state.hero);
     const horror = state.players.find((p) => p.id === state.horror);
@@ -584,19 +609,19 @@
       document.getElementById('hhRetry')?.addEventListener('click', load);
       return;
     }
-    const heroList = recommendationList('hero');
-    const horrorList = recommendationList('horror');
+    const plusMode = isPlusMode();
+    const heroList = plusMode ? recommendationList('hero') : [];
+    const horrorList = plusMode ? recommendationList('horror') : [];
     state.heroIndex = Math.min(state.heroIndex, Math.max(0, heroList.length - 1));
     state.horrorIndex = Math.min(state.horrorIndex, Math.max(0, horrorList.length - 1));
     const gameMeta = [state.game.time, state.game.stadium].filter(Boolean).join(' · ');
     mount.innerHTML = `
-      <section class="hh-casting-header">
-        <div><small>KBO PLAY CASTING</small><h2>오늘의 Hero를 캐스팅하세요</h2><p><b>${escapeHtml(state.game.awayName)}</b> vs <b>${escapeHtml(state.game.homeName)}</b>${gameMeta?` · ${escapeHtml(gameMeta)}`:''}</p></div>
-        <div class="hh-live-dot"><i></i> API LIVE</div>
+      <section class="hh-casting-header ${plusMode ? 'plus' : 'play'}">
+        <div><small>${plusMode ? 'KBO PLAY+ DATA CASTING' : 'KBO PLAY CASTING'}</small><h2>${plusMode ? '데이터로 오늘의 Hero를 찾으세요' : '오늘의 Hero를 직접 골라보세요'}</h2><p><b>${escapeHtml(state.game.awayName)}</b> vs <b>${escapeHtml(state.game.homeName)}</b>${gameMeta?` · ${escapeHtml(gameMeta)}`:''}</p></div>
+        <div class="hh-live-dot"><i></i> ${plusMode ? 'PLAY+ DATA' : 'PLAY'}</div>
       </section>
       ${selectionBar()}
-      <nav class="hh-view-tabs" aria-label="보기 방식"><button data-view="recommend" class="${state.viewMode==='recommend'?'active':''}">추천 보기</button><button data-view="full" class="${state.viewMode==='full'?'active':''}">전체 보기</button></nav>
-      ${state.viewMode === 'recommend' ? `<section class="hh-recommend-view"><div class="hh-casting-grid">${recommendationCard('hero', heroList[state.heroIndex], state.heroIndex, heroList.length)}${recommendationCard('horror', horrorList[state.horrorIndex], state.horrorIndex, horrorList.length)}</div>${matchupPointSection()}</section>` : fullView()}
+      ${plusMode ? `<nav class="hh-view-tabs" aria-label="보기 방식"><button data-view="recommend" class="${state.viewMode==='recommend'?'active':''}">AI 추천</button><button data-view="full" class="${state.viewMode==='full'?'active':''}">전체 선수</button></nav>${state.viewMode === 'recommend' ? `<section class="hh-recommend-view"><div class="hh-casting-grid">${recommendationCard('hero', heroList[state.heroIndex], state.heroIndex, heroList.length)}${recommendationCard('horror', horrorList[state.horrorIndex], state.horrorIndex, horrorList.length)}</div>${matchupPointSection()}</section>` : fullView()}` : playView()}
     `;
     bindEvents();
     bindImageFallbacks();
@@ -719,6 +744,7 @@
   }
 
   function aiDetail(player) {
+    if (!isPlusMode()) return '';
     const ranks = player.ranks.slice(0, 4).map((r) => `${STAT_LABELS[r.key] || r.key} 팀 ${r.rank}위`).join(' · ');
     return `<div class="ai-note hh-detail-ai"><b>AI Hero ${player.heroScore} · Horror Risk ${player.horrorScore}</b><br>${escapeHtml(player.heroReasons.join(' · '))}${ranks ? `<br><span>${escapeHtml(ranks)}</span>` : ''}</div>`;
   }
@@ -730,10 +756,11 @@
 
     try {
       const primaryReasons = player.heroReasons.slice(0, 3);
-      let html = `${detailHeader(player)}<section class="hh-detail-story"><small>DATA STORY</small><h4>${escapeHtml(player.name)}은 왜 오늘의 후보일까요?</h4>${primaryReasons.map((reason, i) => `<div><b>${i + 1}</b><span>${escapeHtml(reason)}</span></div>`).join('')}</section><details class="hh-stat-details"><summary>시즌 기록 자세히</summary>${statCards(fullSeasonRows(player))}</details>`;
+      const story = isPlusMode() ? `<section class="hh-detail-story"><small>DATA STORY</small><h4>${escapeHtml(player.name)}은 왜 오늘의 후보일까요?</h4>${primaryReasons.map((reason, i) => `<div><b>${i + 1}</b><span>${escapeHtml(reason)}</span></div>`).join('')}</section>` : '';
+      let html = `${detailHeader(player)}${story}<details class="hh-stat-details" open><summary>시즌 기록 자세히</summary>${statCards(fullSeasonRows(player))}</details>`;
       if (player.type === 'batter') {
         const opposingStarter = state.players.find((candidate) => candidate.starter && candidate.teamCode !== player.teamCode);
-        if (player.matchup?.pa) html += `<h4>오늘 선발 ${escapeHtml(opposingStarter?.name || '')} 상대전적</h4>${statCards([
+        if (isPlusMode() && player.matchup?.pa) html += `<h4>오늘 선발 ${escapeHtml(opposingStarter?.name || '')} 상대전적</h4>${statCards([
           ['경기', player.matchup.games ?? '—'], ['타석', player.matchup.pa ?? '—'],
           ['타율', format3(player.matchup.avg)], ['OPS', format3(player.matchup.ops)],
           ['안타', player.matchup.hit ?? '—'], ['홈런', player.matchup.hr ?? '—'], ['삼진', player.matchup.k ?? '—'], ['Matchup Point', player.matchupPoint ?? '—'],
