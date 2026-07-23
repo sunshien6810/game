@@ -1,0 +1,97 @@
+
+/* v31 Service Structure: user -> game -> prediction -> participation */
+.my-status-card{
+  margin:28px auto 18px;
+  max-width:1180px;
+  border:1px solid var(--primary-line);
+  background:var(--card-gradient);
+  border-radius:30px;
+  padding:22px 26px;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) repeat(3,minmax(130px,170px));
+  gap:14px;
+  align-items:center;
+  box-shadow:0 14px 34px var(--primary-glow);
+}
+.my-status-main{min-width:0}
+.my-status-eyebrow{display:block;color:var(--primary);font-size:13px;font-weight:950;letter-spacing:.08em}
+.my-status-main h2{margin:5px 0 3px;font-size:28px}
+.my-status-main p{margin:0;color:var(--muted);font-weight:750}
+.my-status-stat{
+  min-width:0;border:1px solid var(--line);background:#fff;border-radius:20px;
+  padding:14px 16px;text-align:center
+}
+.my-status-stat b{display:block;color:var(--primary);font-size:24px;line-height:1.1}
+.my-status-stat span{display:block;margin-top:5px;color:var(--muted);font-size:13px;font-weight:850}
+
+.game{max-width:1180px;margin:0 auto 18px!important}
+.game .stats{display:none!important}
+.game:before{
+  content:"오늘의 경기";display:block;color:var(--primary);font-size:13px;font-weight:950;
+  letter-spacing:.08em;margin-bottom:12px
+}
+.game .match{justify-content:center}
+.game .meta{text-align:center}
+.game .api-starter-row{margin-top:16px}
+
+#home .home-grid{display:none!important}
+#home{min-height:420px}
+#home .api-live-card{margin-top:0}
+.home-action-card{
+  border:1px solid var(--line);background:#fff;border-radius:28px;padding:22px;
+  margin-top:18px;box-shadow:0 12px 30px rgba(15,23,42,.06)
+}
+.home-action-head{display:flex;justify-content:space-between;gap:16px;align-items:flex-end;margin-bottom:15px}
+.home-action-head h2{margin:0;font-size:24px}
+.home-action-head p{margin:5px 0 0;color:var(--muted);font-weight:750}
+.home-action-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.home-action{
+  border:1px solid var(--primary-line);background:var(--primary-soft-2);
+  border-radius:22px;padding:18px;text-align:left;cursor:pointer
+}
+.home-action:hover{transform:translateY(-1px);box-shadow:0 10px 24px var(--primary-glow)}
+.home-action span{font-size:28px;display:block}
+.home-action b{display:block;font-size:20px;margin-top:8px}
+.home-action small{display:block;color:var(--muted);margin-top:4px;font-weight:750}
+
+.ai-pick-home{
+  display:none;margin-top:18px;border:1px solid color-mix(in srgb,var(--primary) 30%,var(--line));
+  background:linear-gradient(135deg,var(--primary-soft),#fff);border-radius:28px;padding:22px
+}
+.mode-plus .ai-pick-home{display:block}
+.ai-pick-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px;align-items:center}
+.ai-pick-home h2{margin:0;font-size:23px}
+.ai-pick-home p{margin:6px 0 0;color:var(--muted);line-height:1.5}
+.ai-pick-tags{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px}
+.ai-pick-tags span{border-radius:999px;background:#fff;border:1px solid var(--primary-line);padding:7px 10px;font-size:13px;font-weight:900}
+.ai-pick-btn{border:0;border-radius:18px;background:var(--primary);color:#fff;padding:14px 18px;font-weight:950;cursor:pointer;white-space:nowrap}
+
+.mode-play #categoryTabs .category-tab:nth-child(4),
+.mode-play #categoryTabsSheet .category-tab:nth-child(4){display:none!important}
+
+#bingo .api-bingo-prediction{margin-bottom:16px}
+#bingo .actions .play-hidden:first-child{background:linear-gradient(135deg,var(--primary),var(--primary-dark))}
+.panel-context-header{display:none}
+
+body:not(.home-active) .my-status-card,
+body:not(.home-active) .game{display:none!important}
+
+@media(max-width:980px){
+  .my-status-card{
+    margin:16px 16px 12px;grid-template-columns:1fr 1fr;padding:18px;border-radius:25px
+  }
+  .my-status-main{grid-column:1/-1}
+  .my-status-stat:last-child{grid-column:1/-1}
+  .game{margin:0 16px 14px!important}
+  .home-action-grid{grid-template-columns:1fr 1fr}
+  .ai-pick-row{grid-template-columns:1fr}
+  .ai-pick-btn{width:100%}
+}
+@media(max-width:520px){
+  .my-status-card{grid-template-columns:1fr 1fr;gap:9px}
+  .my-status-main h2{font-size:24px}
+  .my-status-stat{padding:12px 8px}
+  .my-status-stat b{font-size:20px}
+  .home-action-grid{grid-template-columns:1fr}
+  .home-action-card,.ai-pick-home{padding:18px;border-radius:24px}
+}
