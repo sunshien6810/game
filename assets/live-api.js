@@ -280,10 +280,36 @@
     return textValue(value);
   }
 
+  const TEAM_DISPLAY_NAMES = {
+    LG: 'LG 트윈스', NC: 'NC 다이노스', KT: 'KT 위즈', SS: '삼성 라이온즈',
+    HT: 'KIA 타이거즈', SK: 'SSG 랜더스', HH: '한화 이글스', OB: '두산 베어스',
+    LT: '롯데 자이언츠', WO: '키움 히어로즈',
+  };
+
+  function canonicalTeamName(value, fallback = '') {
+    const raw = String(value ?? '').trim();
+    if (!raw) return fallback;
+    const compact = raw.toUpperCase().replace(/\s/g, '');
+    const aliases = {
+      LG: 'LG', 엘지: 'LG', LG트윈스: 'LG',
+      NC: 'NC', 엔씨: 'NC', NC다이노스: 'NC',
+      KT: 'KT', 케이티: 'KT', KTWIZ: 'KT', KT위즈: 'KT',
+      SS: 'SS', 삼성: 'SS', 삼성라이온즈: 'SS',
+      HT: 'HT', KIA: 'HT', 기아: 'HT', 해태: 'HT', KIA타이거즈: 'HT',
+      SK: 'SK', SSG: 'SK', SSG랜더스: 'SK',
+      HH: 'HH', HAN: 'HH', HANWHA: 'HH', 한화: 'HH', 한화이글스: 'HH',
+      OB: 'OB', 두산: 'OB', 두산베어스: 'OB',
+      LT: 'LT', 롯데: 'LT', 롯데자이언츠: 'LT',
+      WO: 'WO', 키움: 'WO', 넥센: 'WO', 키움히어로즈: 'WO',
+    };
+    const code = aliases[compact];
+    return code ? TEAM_DISPLAY_NAMES[code] : raw;
+  }
+
   function teamNameValue(value, fallback = '') {
-    if (value === undefined || value === null || value === '') return fallback;
+    if (value === undefined || value === null || value === '') return canonicalTeamName(fallback, fallback);
     if (typeof value === 'string' || typeof value === 'number') {
-      return String(value).trim() || fallback;
+      return canonicalTeamName(value, canonicalTeamName(fallback, fallback));
     }
     if (typeof value === 'object') {
       const nested = getByCandidates(value, [
@@ -294,7 +320,7 @@
         return teamNameValue(nested, fallback);
       }
     }
-    return fallback;
+    return canonicalTeamName(fallback, fallback);
   }
 
   function teamCodeValue(value, teamName = '') {

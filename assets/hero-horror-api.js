@@ -609,6 +609,23 @@
     return `<div class="hh-sticky-casting"><span>내 캐스팅</span>${mini('HERO',hero,'hero')}${mini('HORROR',horror,'horror')}<button id="hhComplete" ${hero&&horror?'':'disabled'}>${hero&&horror?'선택 확정':'두 선수 선택'}</button></div>`;
   }
 
+  function formatGameTime(value) {
+    const raw = textValue(value).trim();
+    if (!raw) return '';
+
+    // API 값이 1830, 18:30, 18:30:00 형태여도 화면에는 HH:mm으로 표시합니다.
+    const compact = raw.replace(/[^0-9]/g, '');
+    if (compact.length >= 4) {
+      const hour = compact.slice(0, 2);
+      const minute = compact.slice(2, 4);
+      if (Number(hour) <= 23 && Number(minute) <= 59) return `${hour}:${minute}`;
+    }
+
+    const matched = raw.match(/(?:^|\s)([01]?\d|2[0-3]):([0-5]\d)/);
+    if (matched) return `${matched[1].padStart(2, '0')}:${matched[2]}`;
+    return raw;
+  }
+
   function render() {
     const mount = root();
     if (!mount) return;
@@ -626,7 +643,8 @@
     const horrorList = plusMode ? recommendationList('horror') : [];
     state.heroIndex = Math.min(state.heroIndex, Math.max(0, heroList.length - 1));
     state.horrorIndex = Math.min(state.horrorIndex, Math.max(0, horrorList.length - 1));
-    const gameMeta = [state.game.time, state.game.stadium].filter(Boolean).join(' · ');
+    const displayGameTime = formatGameTime(state.game.time);
+    const gameMeta = [displayGameTime, state.game.stadium].filter(Boolean).join(' · ');
     mount.innerHTML = `
       <section class="hh-casting-header ${plusMode ? 'plus' : 'play'}">
         <div><small>${plusMode ? 'KBO PLAY+ DATA CASTING' : 'KBO PLAY CASTING'}</small><h2>${plusMode ? '데이터로 오늘의 Hero를 찾으세요' : '오늘의 Hero를 직접 골라보세요'}</h2><p><b>${escapeHtml(state.game.awayName)}</b> vs <b>${escapeHtml(state.game.homeName)}</b>${gameMeta?` · ${escapeHtml(gameMeta)}`:''}</p></div>
