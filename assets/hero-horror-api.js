@@ -33,6 +33,10 @@
     loading: true,
     error: null,
     detailCache: new Map(),
+    viewMode: 'recommend',
+    heroIndex: 0,
+    horrorIndex: 0,
+    fullLimit: 8,
   };
 
   const root = () => document.getElementById('heroHorrorApiRoot');
@@ -384,64 +388,56 @@
       : [['ERA', format2(player.season.era)], ['WHIP', format2(player.season.whip)], ['승-패', `${player.season.win ?? 0}-${player.season.lose ?? 0}`], ['K', player.season.k ?? '—']];
   }
 
-  function candidatePlayers() {
-    let list = state.players.filter((player) => {
-      const teamOk = state.teamFilter === 'ALL' || player.teamCode === state.teamFilter;
-      const roleOk = state.roleFilter === 'ALL' || player.type === state.roleFilter;
-      const sampleOk = player.starter || (player.type === 'batter' ? (player.season.pa || 0) >= 40 : (player.season.games || 0) >= 9);
-      return teamOk && roleOk && sampleOk;
-    });
-    list.sort((a, b) => Math.max(b.heroScore, b.horrorScore) - Math.max(a.heroScore, a.horrorScore));
-    return state.expanded ? list : list.slice(0, 12);
+  function eligiblePlayers() {
+    return state.players.filter((player) => player.starter || (player.type === 'batter'
+      ? (player.season.pa || 0) >= 40 && ((player.recent.pa || 0) >= 4 || (player.season.pa || 0) >= 180)
+      : (player.season.games || 0) >= 9));
   }
 
-  function aiPick(type) {
+  function recommendationList(type) {
     const scoreKey = type === 'hero' ? 'heroScore' : 'horrorScore';
-    const eligible = state.players.filter((player) => player.type === 'batter' || player.starter);
-    return [...eligible].sort((a, b) => b[scoreKey] - a[scoreKey])[0] || null;
+    const preferred = eligiblePlayers().filter((player) => player.type === 'batter' || player.starter);
+    return [...preferred].sort((a, b) => b[scoreKey] - a[scoreKey]).slice(0, 3);
+  }
+
+  function featuredMetric(player) {
+    if (player.type === 'pitcher') return { label: 'ERA', value: format2(player.season.era) };
+    const rank = player.ranks?.[0];
+    if (rank?.key === 'hr') return { label: '홈런', value: `${player.season.hr ?? '—'}개` };
+    if (rank?.key === 'steal') return { label: '도루', value: `${player.season.steal ?? '—'}개` };
+    if (player.recent.ops !== null && player.recent.ops >= 0.9) return { label: '최근 OPS', value: format3(player.recent.ops) };
+    return { label: 'OPS', value: format3(player.season.ops) };
   }
 
   function imageMarkup(player, className = '') {
     return `<div class="${className} hh-image-shell"><img src="${escapeHtml(player.imageUrl)}" alt="${escapeHtml(player.name)}" loading="lazy"><div class="hh-image-fallback">${escapeHtml(player.name.slice(-2))}</div></div>`;
   }
 
-  function aiCard(type, player) {
+  function recommendationCard(type, player, index, total) {
     if (!player) return '';
     const isHero = type === 'hero';
     const reasons = isHero ? player.heroReasons : player.horrorReasons;
-    return `<article class="hh-ai-card ${type}">
-      <div class="hh-ai-kicker">${isHero ? 'AI HERO PICK' : 'AI HORROR PICK'}</div>
-      <div class="hh-ai-content">
-        ${imageMarkup(player, 'hh-ai-photo')}
-        <div class="hh-ai-person"><b>${escapeHtml(player.name)}</b><span>${escapeHtml(player.teamName)} · ${escapeHtml(player.position)}</span></div>
-        <div class="hh-ai-score"><small>${isHero ? '추천' : 'Risk'}</small><strong>${isHero ? player.heroScore : player.horrorScore}</strong></div>
-      </div>
-      <div class="hh-reason-list">${reasons.map((reason) => `<span>${escapeHtml(reason)}</span>`).join('')}</div>
-      <button class="hh-ai-pick-btn ${type}" data-pick="${type}" data-id="${player.id}">${isHero ? 'Hero' : 'Horror'}로 선택</button>
-    </article>`;
-  }
-
-  function playerCard(player) {
-    const trend = trendMeta(player.trend);
-    const selectedHero = state.hero === player.id;
-    const selectedHorror = state.horror === player.id;
-    return `<article class="hh-player-card ${selectedHero ? 'is-hero' : ''} ${selectedHorror ? 'is-horror' : ''}">
-      <div class="hh-card-photo">
-        ${imageMarkup(player)}
-        ${player.starter ? '<span class="hh-starter-badge">오늘의 선발</span>' : ''}
-      </div>
-      <div class="hh-card-body">
-        <div class="hh-player-title"><div><b>${escapeHtml(player.name)}</b><span>${escapeHtml(player.teamName)} · ${escapeHtml(player.position)}${player.side ? ` · ${escapeHtml(player.side)}` : ''}</span></div><em class="hh-trend ${trend.cls}">${trend.text}</em></div>
-        <div class="hh-stat-grid">${statsFor(player).map(([label, value]) => `<div><small>${label}</small><strong>${value}</strong></div>`).join('')}</div>
-        <div class="plus-only hh-recent-line">${player.type === 'batter' && player.recent.ops !== null
-          ? `최근 7경기 AVG ${format3(player.recent.avg)} · OPS ${format3(player.recent.ops)}`
-          : escapeHtml(player.heroReasons[0] || '')}</div>
-        <div class="hh-card-actions">
-          <button class="hh-detail-btn plus-only" data-detail="${player.id}">상세</button>
-          <button class="hh-choice hero ${selectedHero ? 'active' : ''}" data-pick="hero" data-id="${player.id}">Hero</button>
-          <button class="hh-choice horror ${selectedHorror ? 'active' : ''}" data-pick="horror" data-id="${player.id}">Horror</button>
+    const metric = featuredMetric(player);
+    const selected = (isHero ? state.hero : state.horror) === player.id;
+    return `<article class="hh-casting-card ${type} ${selected ? 'selected' : ''}">
+      <div class="hh-card-glow"></div>
+      <div class="hh-card-topline"><span>${isHero ? '오늘의 HERO 후보' : '오늘의 변수 후보'}</span><b>${index + 1} / ${total}</b></div>
+      <button type="button" class="hh-casting-main" data-detail="${player.id}" aria-label="${escapeHtml(player.name)} 상세 보기">
+        ${imageMarkup(player, 'hh-casting-photo')}
+        <div class="hh-casting-copy">
+          <small>${escapeHtml(player.teamName)} · ${escapeHtml(player.position)}</small>
+          <h3>${escapeHtml(player.name)}</h3>
+          <div class="hh-score-line"><strong>${isHero ? 'HERO' : 'RISK'} ${isHero ? player.heroScore : player.horrorScore}</strong><span>${escapeHtml(metric.label)} ${escapeHtml(metric.value)}</span></div>
         </div>
+      </button>
+      <div class="hh-story-points">${reasons.slice(0, 2).map((reason) => `<span>${escapeHtml(reason)}</span>`).join('')}</div>
+      <div class="hh-carousel-controls">
+        <button type="button" data-slide="${type}" data-dir="-1" aria-label="이전 후보">←</button>
+        <div>${Array.from({length: total}, (_, i) => `<i class="${i === index ? 'active' : ''}"></i>`).join('')}</div>
+        <button type="button" data-slide="${type}" data-dir="1" aria-label="다음 후보">→</button>
       </div>
+      <button type="button" class="hh-cast-button ${type} ${selected ? 'active' : ''}" data-pick="${type}" data-id="${player.id}">${selected ? `✓ 나의 ${isHero ? 'HERO' : 'HORROR'}` : `${isHero ? 'HERO' : 'HORROR'}로 캐스팅`}</button>
+      <button type="button" class="hh-why-button" data-detail="${player.id}">${isHero ? '왜 Hero 후보인가요?' : '왜 오늘의 변수인가요?'}</button>
     </article>`;
   }
 
@@ -449,22 +445,55 @@
     const away = state.players.find((p) => p.starter && p.teamCode === state.game.awayCode);
     const home = state.players.find((p) => p.starter && p.teamCode === state.game.homeCode);
     if (!away && !home) return '';
-    const one = (player) => player ? `<button type="button" class="hh-starter-player" data-detail="${player.id}" aria-label="${escapeHtml(player.name)} 상세 보기">${imageMarkup(player, 'hh-starter-photo')}<div><small>${escapeHtml(player.teamName)}</small><b>${escapeHtml(player.name)}</b><span>ERA ${format2(player.season.era)} · WHIP ${format2(player.season.whip)}</span><em>최근 등판 상세 보기</em></div></button>` : '<div class="hh-starter-player empty">선발 미정</div>';
-    return `<section class="hh-starter-section plus-only"><div class="hh-section-title"><div><small>STARTING PITCHERS</small><h3>오늘의 선발 맞대결</h3></div><span>선수를 누르면 최근 3·7·15경기 기록을 확인할 수 있습니다.</span></div><div class="hh-starter-matchup">${one(away)}<strong>VS</strong>${one(home)}</div></section>`;
+    const one = (player) => player ? `<button type="button" class="hh-starter-duel-player" data-detail="${player.id}">${imageMarkup(player, 'hh-starter-photo')}<small>${escapeHtml(player.teamName)}</small><b>${escapeHtml(player.name)}</b><span>ERA ${format2(player.season.era)}</span><em>WHIP ${format2(player.season.whip)}</em></button>` : '<div class="hh-starter-duel-player empty">선발 미정</div>';
+    const edge = away && home ? ((away.season.era || 99) < (home.season.era || 99) ? `${away.name} 근소 우세` : `${home.name} 근소 우세`) : '선발 비교';
+    return `<section class="hh-starter-showdown"><div class="hh-section-heading"><div><small>STARTER SHOWDOWN</small><h3>오늘의 선발 대결</h3></div><span>${escapeHtml(edge)}</span></div><div class="hh-starter-duel">${one(away)}<strong>VS</strong>${one(home)}</div><button type="button" class="hh-duel-detail" data-detail="${(away || home)?.id || ''}">선발 맞대결 자세히</button></section>`;
+  }
+
+  function compactPlayerCard(player) {
+    const trend = trendMeta(player.trend);
+    const metric = featuredMetric(player);
+    const selectedHero = state.hero === player.id;
+    const selectedHorror = state.horror === player.id;
+    return `<article class="hh-compact-player ${selectedHero ? 'is-hero' : ''} ${selectedHorror ? 'is-horror' : ''}">
+      <button type="button" class="hh-player-open" data-detail="${player.id}">
+        ${imageMarkup(player, 'hh-compact-photo')}
+        <div><small>${escapeHtml(player.teamName)} · ${escapeHtml(player.position)}</small><h4>${escapeHtml(player.name)}</h4><span class="hh-featured-stat">${escapeHtml(metric.label)} <b>${escapeHtml(metric.value)}</b></span><em class="hh-trend ${trend.cls}">${trend.text}</em></div>
+      </button>
+      <div class="hh-compact-actions"><button data-pick="hero" data-id="${player.id}" class="hero ${selectedHero ? 'active' : ''}">${selectedHero ? '✓ HERO' : 'HERO'}</button><button data-pick="horror" data-id="${player.id}" class="horror ${selectedHorror ? 'active' : ''}">${selectedHorror ? '✓ HORROR' : 'HORROR'}</button></div>
+    </article>`;
+  }
+
+  function fullView() {
+    const filtered = eligiblePlayers().filter((player) => state.teamFilter === 'ALL' || player.teamCode === state.teamFilter);
+    const batters = filtered.filter((p) => p.type === 'batter').sort((a,b)=>Math.max(b.heroScore,b.horrorScore)-Math.max(a.heroScore,a.horrorScore));
+    const pitchers = filtered.filter((p) => p.type === 'pitcher').sort((a,b)=>(b.starter?100:0)+Math.max(b.heroScore,b.horrorScore)-((a.starter?100:0)+Math.max(a.heroScore,a.horrorScore)));
+    const visibleBatters = batters.slice(0, Math.max(4, state.fullLimit - 2));
+    const visiblePitchers = pitchers.slice(0, Math.min(4, Math.ceil(state.fullLimit/3)));
+    const totalVisible = visibleBatters.length + visiblePitchers.length;
+    const total = batters.length + pitchers.length;
+    return `<section class="hh-full-view">
+      <div class="hh-team-chips">${[['ALL','전체'],[state.game.awayCode,state.game.awayName],[state.game.homeCode,state.game.homeName]].map(([v,l])=>`<button data-team="${v}" class="${state.teamFilter===v?'active':''}">${escapeHtml(l)}</button>`).join('')}</div>
+      <div class="hh-section-heading"><div><small>SPOTLIGHT BATTERS</small><h3>주목할 타자</h3></div><span>${visibleBatters.length}명</span></div>
+      <div class="hh-compact-grid">${visibleBatters.map(compactPlayerCard).join('') || '<p class="hh-empty">표시할 타자가 없습니다.</p>'}</div>
+      <div class="hh-section-heading hh-pitcher-heading"><div><small>TODAY\'S PITCHERS</small><h3>오늘의 투수</h3></div><span>${visiblePitchers.length}명</span></div>
+      <div class="hh-compact-grid">${visiblePitchers.map(compactPlayerCard).join('') || '<p class="hh-empty">표시할 투수가 없습니다.</p>'}</div>
+      ${totalVisible < total ? '<button id="hhMore" class="hh-more-casting">선수 더보기</button>' : ''}
+    </section>`;
   }
 
   function selectionBar() {
     const hero = state.players.find((p) => p.id === state.hero);
     const horror = state.players.find((p) => p.id === state.horror);
-    const mini = (label, player, type) => `<div class="hh-selected ${type}"><small>나의 ${label}</small>${player ? `<div>${imageMarkup(player, 'hh-mini-photo')}<b>${escapeHtml(player.name)}</b></div>` : '<b>선택 전</b>'}</div>`;
-    return `<div class="hh-selection-bar">${mini('Hero', hero, 'hero')}${mini('Horror', horror, 'horror')}<button id="hhComplete" ${hero && horror ? '' : 'disabled'}>${hero && horror ? '선택 완료' : '두 선수를 선택하세요'}</button></div>`;
+    const mini = (label, player, type) => `<div class="hh-cast-slot ${type}"><small>${label}</small>${player ? `${imageMarkup(player, 'hh-mini-photo')}<b>${escapeHtml(player.name)}</b>` : '<b>선택 전</b>'}</div>`;
+    return `<div class="hh-sticky-casting"><span>내 캐스팅</span>${mini('HERO',hero,'hero')}${mini('HORROR',horror,'horror')}<button id="hhComplete" ${hero&&horror?'':'disabled'}>${hero&&horror?'선택 확정':'두 선수 선택'}</button></div>`;
   }
 
   function render() {
     const mount = root();
     if (!mount) return;
     if (state.loading) {
-      mount.innerHTML = '<div class="card hh-loading-card"><h2>Hero / Horror</h2><p class="hint">API에서 경기와 선수 데이터를 불러오고 있습니다.</p><div class="hh-skeleton"></div></div>';
+      mount.innerHTML = '<div class="card hh-loading-card"><h2>Hero / Horror</h2><p class="hint">오늘의 캐스팅 후보를 불러오고 있습니다.</p><div class="hh-skeleton"></div></div>';
       return;
     }
     if (state.error) {
@@ -472,34 +501,20 @@
       document.getElementById('hhRetry')?.addEventListener('click', load);
       return;
     }
-
-    const heroPick = aiPick('hero');
-    const horrorPick = aiPick('horror');
-    const players = candidatePlayers();
+    const heroList = recommendationList('hero');
+    const horrorList = recommendationList('horror');
+    state.heroIndex = Math.min(state.heroIndex, Math.max(0, heroList.length - 1));
+    state.horrorIndex = Math.min(state.horrorIndex, Math.max(0, horrorList.length - 1));
     const gameMeta = [state.game.time, state.game.stadium].filter(Boolean).join(' · ');
-
     mount.innerHTML = `
-      <section class="hh-hero-header card">
-        <div class="hh-header-row"><div><small>PLAYER PREDICTION</small><h2>Hero / Horror</h2><p><b>${escapeHtml(state.game.awayName)}</b> vs <b>${escapeHtml(state.game.homeName)}</b>${gameMeta ? ` · ${escapeHtml(gameMeta)}` : ''}</p><span>오늘 활약할 Hero와 경기의 변수가 될 Horror를 선택하세요.</span></div><div class="hh-api-live"><i></i>API LIVE</div></div>
-        <div class="plus-only hh-ai-grid">${aiCard('hero', heroPick)}${aiCard('horror', horrorPick)}</div>
+      <section class="hh-casting-header">
+        <div><small>KBO PLAY CASTING</small><h2>오늘의 Hero를 캐스팅하세요</h2><p><b>${escapeHtml(state.game.awayName)}</b> vs <b>${escapeHtml(state.game.homeName)}</b>${gameMeta?` · ${escapeHtml(gameMeta)}`:''}</p></div>
+        <div class="hh-live-dot"><i></i> API LIVE</div>
       </section>
-
-      ${starterSection()}
-
-      <section class="hh-candidate-section">
-        <div class="hh-section-title"><div><small>PLAYER LIST</small><h3>선수 후보</h3></div><span>${players.length}명 표시</span></div>
-        <div class="hh-filter-row">
-          <div class="hh-filter-group">${[
-            ['ALL', '전체'], [state.game.awayCode, state.game.awayName], [state.game.homeCode, state.game.homeName],
-          ].map(([value, label]) => `<button data-team="${value}" class="${state.teamFilter === value ? 'active' : ''}">${escapeHtml(label)}</button>`).join('')}</div>
-          <div class="hh-filter-group">${[['ALL', '전체'], ['batter', '타자'], ['pitcher', '투수']].map(([value, label]) => `<button data-role="${value}" class="${state.roleFilter === value ? 'active' : ''}">${label}</button>`).join('')}</div>
-        </div>
-        <div class="hh-player-grid">${players.length ? players.map(playerCard).join('') : '<div class="hh-empty">조건에 맞는 선수 후보가 없습니다.</div>'}</div>
-        <button class="hh-more" id="hhMore">${state.expanded ? '추천 후보만 보기' : '전체 후보 더보기'}</button>
-      </section>
-
-      ${selectionBar()}`;
-
+      ${selectionBar()}
+      <nav class="hh-view-tabs" aria-label="보기 방식"><button data-view="recommend" class="${state.viewMode==='recommend'?'active':''}">추천 보기</button><button data-view="full" class="${state.viewMode==='full'?'active':''}">전체 보기</button></nav>
+      ${state.viewMode === 'recommend' ? `<section class="hh-recommend-view"><div class="hh-casting-grid">${recommendationCard('hero', heroList[state.heroIndex], state.heroIndex, heroList.length)}${recommendationCard('horror', horrorList[state.horrorIndex], state.horrorIndex, horrorList.length)}</div>${starterSection()}</section>` : fullView()}
+    `;
     bindEvents();
     bindImageFallbacks();
   }
@@ -631,9 +646,10 @@
     if (!openDetailSheet(player, loadingHtml)) return;
 
     try {
-      let html = `${detailHeader(player)}<h4>시즌 상세 기록</h4>${statCards(fullSeasonRows(player))}`;
+      const primaryReasons = player.heroReasons.slice(0, 3);
+      let html = `${detailHeader(player)}<section class="hh-detail-story"><small>DATA STORY</small><h4>${escapeHtml(player.name)}은 왜 오늘의 후보일까요?</h4>${primaryReasons.map((reason, i) => `<div><b>${i + 1}</b><span>${escapeHtml(reason)}</span></div>`).join('')}</section><details class="hh-stat-details"><summary>시즌 기록 자세히</summary>${statCards(fullSeasonRows(player))}</details>`;
       if (player.type === 'batter') {
-        html += `<h4>최근 7경기</h4>${statCards(batterRecentRows(player))}`;
+        html += `<h4>최근 7경기 흐름</h4>${statCards(batterRecentRows(player))}`;
       } else {
         const splits = await fetchPitcherDetail(player);
         if (splits.length) {
@@ -644,9 +660,9 @@
           html += '<div class="hh-detail-empty">최근 등판 상세 데이터가 없습니다.</div>';
         }
       }
-      html += aiDetail(player);
+      html += `${aiDetail(player)}<div class="hh-detail-cast-actions"><button data-sheet-pick="hero" data-id="${player.id}">HERO로 캐스팅</button><button data-sheet-pick="horror" data-id="${player.id}">HORROR로 캐스팅</button></div>`;
       const { body, sheet } = detailElements();
-      if (body) body.innerHTML = html;
+      if (body) { body.innerHTML = html; body.querySelectorAll('[data-sheet-pick]').forEach((button) => button.addEventListener('click', () => choose(button.dataset.sheetPick, button.dataset.id))); }
       if (sheet) bindImageFallbacks(sheet);
     } catch (error) {
       console.error('[Hero/Horror detail]', error);
@@ -657,21 +673,31 @@
   }
 
   function bindEvents() {
+    root()?.querySelectorAll('[data-view]').forEach((button) => button.addEventListener('click', () => {
+      state.viewMode = button.dataset.view;
+      render();
+    }));
     root()?.querySelectorAll('[data-team]').forEach((button) => button.addEventListener('click', () => {
       state.teamFilter = button.dataset.team;
-      state.expanded = false;
+      state.fullLimit = 8;
       render();
     }));
-    root()?.querySelectorAll('[data-role]').forEach((button) => button.addEventListener('click', () => {
-      state.roleFilter = button.dataset.role;
-      state.expanded = false;
+    root()?.querySelectorAll('[data-slide]').forEach((button) => button.addEventListener('click', () => {
+      const type = button.dataset.slide;
+      const list = recommendationList(type);
+      if (!list.length) return;
+      const key = type === 'hero' ? 'heroIndex' : 'horrorIndex';
+      state[key] = (state[key] + Number(button.dataset.dir) + list.length) % list.length;
       render();
     }));
-    root()?.querySelectorAll('[data-pick]').forEach((button) => button.addEventListener('click', () => choose(button.dataset.pick, button.dataset.id)));
+    root()?.querySelectorAll('[data-pick]').forEach((button) => button.addEventListener('click', (event) => {
+      event.stopPropagation();
+      choose(button.dataset.pick, button.dataset.id);
+    }));
     root()?.querySelectorAll('[data-detail]').forEach((button) => button.addEventListener('click', () => showDetail(state.players.find((p) => p.id === button.dataset.detail))));
-    document.getElementById('hhMore')?.addEventListener('click', () => { state.expanded = !state.expanded; render(); });
+    document.getElementById('hhMore')?.addEventListener('click', () => { state.fullLimit += 6; render(); });
     const complete = document.getElementById('hhComplete');
-    if (complete && !complete.disabled) complete.addEventListener('click', () => window.showToast?.('Hero / Horror 선택이 저장되었습니다.'));
+    if (complete && !complete.disabled) complete.addEventListener('click', () => window.showToast?.('오늘의 Hero / Horror 캐스팅이 확정되었습니다.'));
   }
 
   async function load() {
@@ -710,7 +736,7 @@
       state.loading = false;
       render();
     } catch (error) {
-      console.error('[Hero/Horror v32]', error);
+      console.error('[Hero/Horror v33]', error);
       state.loading = false;
       state.error = error.message || 'Hero/Horror 데이터를 불러오지 못했습니다.';
       render();
