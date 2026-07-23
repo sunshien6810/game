@@ -31,3 +31,35 @@
   .api-prediction-starter-grid,.api-starter-row{grid-template-columns:1fr 1fr;display:grid;gap:8px}.api-prediction-starter-grid .api-starter-card{padding:9px;justify-content:flex-start}.api-prediction-starter-grid .api-starter-photo{width:42px;height:42px;flex-basis:42px}.api-starter-card{padding:8px 9px;min-width:0}.api-starter-card strong{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90px}.api-live-foot{align-items:flex-start;flex-direction:column;font-size:11px}
 }
 @media(max-width:380px){.api-live-card{padding-left:11px;padding-right:11px}.api-prediction-logo{width:56px;height:46px}.api-prediction-team b{font-size:19px}.api-expected-score strong{font-size:20px}.api-prob-away span,.api-prob-home span{font-size:15px;padding:0 7px}}
+
+/* Play / Play+ 승부 예측 노출 정책 */
+.api-detail-toggle{
+  width:100%;margin-top:16px;padding:13px 16px;border:1px solid color-mix(in srgb,var(--primary) 22%,var(--line));
+  border-radius:16px;background:color-mix(in srgb,var(--primary) 6%,#fff);color:var(--primary);
+  font-size:14px;font-weight:950;cursor:pointer;transition:.18s ease
+}
+.api-detail-toggle:hover{background:color-mix(in srgb,var(--primary) 10%,#fff)}
+.api-detail-content[hidden]{display:none!important}
+.mode-play .api-detail-toggle,.mode-play .api-detail-content{display:none!important}
+
+.api-bingo-prediction{
+  margin:4px 0 16px;padding:15px 16px;border:1px solid color-mix(in srgb,var(--primary) 18%,var(--line));
+  border-radius:18px;background:linear-gradient(135deg,color-mix(in srgb,var(--primary) 5%,#fff),#fff)
+}
+.api-bingo-prediction-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px}
+.api-bingo-prediction-head strong{display:block;font-size:15px}.api-bingo-prediction-head span{display:block;margin-top:2px;color:var(--muted);font-size:12px}
+.api-bingo-prediction-head>b{font-size:13px;color:var(--primary);white-space:nowrap}
+.api-bingo-prob-row{display:grid;grid-template-columns:auto minmax(100px,1fr) auto;align-items:center;gap:10px;font-size:12px;color:var(--muted)}
+.api-bingo-prob-row>span{white-space:nowrap}.api-bingo-prob-row b{color:var(--text);font-size:13px}
+.api-bingo-prob-track{display:flex;height:12px;overflow:hidden;border-radius:999px;background:#e8eef7}
+.api-bingo-prob-track i{display:block;height:100%}.api-bingo-prob-away{background:color-mix(in srgb,var(--primary) 55%,#64748b)}.api-bingo-prob-home{background:var(--primary)}
+.api-bingo-plus-hint{display:none;margin-top:12px;padding:11px 12px;border-radius:14px;background:color-mix(in srgb,var(--primary) 7%,#fff);border:1px solid color-mix(in srgb,var(--primary) 14%,var(--line))}
+.api-bingo-prediction.is-plus .api-bingo-plus-hint{display:block}.api-bingo-plus-hint strong{font-size:12px;color:var(--primary)}.api-bingo-plus-hint p{margin:4px 0 0;font-size:12px;line-height:1.5;color:var(--text)}
+
+@media(max-width:700px){
+  .api-detail-toggle{padding:12px 13px;font-size:13px}
+  .api-bingo-prediction{padding:13px 12px;border-radius:16px;margin-bottom:13px}
+  .api-bingo-prediction-head{align-items:flex-start}.api-bingo-prediction-head strong{font-size:14px}.api-bingo-prediction-head>b{font-size:12px}
+  .api-bingo-prob-row{grid-template-columns:1fr;gap:6px}.api-bingo-prob-row>span{display:flex;justify-content:space-between}.api-bingo-prob-row>span:last-child{flex-direction:row-reverse}
+  .api-bingo-prob-track{height:10px;grid-row:2}
+}

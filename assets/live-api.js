@@ -670,18 +670,20 @@
     if (!details && !probability.commentary) return '';
 
     return `
-      <section class="api-prediction-detail">
-        <div class="api-detail-title-row">
-          <h3>상세 승부 예측</h3>
-          <span>API 분석 결과</span>
-        </div>
-        ${details ? `<div class="api-detail-grid">${details}</div>` : ''}
-        ${probability.commentary ? `
-          <details class="api-full-commentary">
-            <summary>전체 분석 원문 보기</summary>
-            <p>${escapeHtml(probability.commentary).replaceAll('\\n', '<br>')}</p>
-          </details>` : ''}
-      </section>`;
+      <div class="api-detail-content" hidden>
+        <section class="api-prediction-detail">
+          <div class="api-detail-title-row">
+            <h3>상세 승부 예측</h3>
+            <span>Play+ 데이터 분석</span>
+          </div>
+          ${details ? `<div class="api-detail-grid">${details}</div>` : ''}
+          ${probability.commentary ? `
+            <details class="api-full-commentary">
+              <summary>전체 분석 원문 보기</summary>
+              <p>${escapeHtml(probability.commentary).replace(/\n/g, '<br>')}</p>
+            </details>` : ''}
+        </section>
+      </div>`;
   }
 
   function predictionStarterMarkup(game, probability) {
@@ -704,6 +706,56 @@
       </section>`;
   }
 
+  function isPlusMode() {
+    return document.getElementById('app')?.classList.contains('mode-plus') ?? true;
+  }
+
+  function compactPredictionMarkup(game, probability) {
+    const away = probability.away.toFixed(1);
+    const home = probability.home.toFixed(1);
+    const awayTeam = probability.awayTeam || game.awayTeam;
+    const homeTeam = probability.homeTeam || game.homeTeam;
+    const hasExpectedScore = probability.expectedAwayScore !== null && probability.expectedHomeScore !== null;
+    const hint = probability.comments?.summary || probability.commentary || '';
+
+    return `
+      <div class="api-bingo-prediction-head">
+        <div>
+          <strong>오늘의 승부 예측</strong>
+          <span>${escapeHtml(awayTeam)} vs ${escapeHtml(homeTeam)}</span>
+        </div>
+        ${hasExpectedScore ? `<b>예상 ${probability.expectedAwayScore.toFixed(1)} : ${probability.expectedHomeScore.toFixed(1)}</b>` : ''}
+      </div>
+      <div class="api-bingo-prob-row">
+        <span>${escapeHtml(awayTeam)} <b>${away}%</b></span>
+        <div class="api-bingo-prob-track" aria-label="${escapeHtml(awayTeam)} ${away}%, ${escapeHtml(homeTeam)} ${home}%">
+          <i class="api-bingo-prob-away" style="width:${away}%"></i>
+          <i class="api-bingo-prob-home" style="width:${home}%"></i>
+        </div>
+        <span><b>${home}%</b> ${escapeHtml(homeTeam)}</span>
+      </div>
+      ${hint ? `<div class="api-bingo-plus-hint"><strong>Play+ 미션 힌트</strong><p>${escapeHtml(hint)}</p></div>` : ''}`;
+  }
+
+  function renderBingoPrediction(game, probability) {
+    const bingo = document.getElementById('bingo');
+    if (!bingo) return;
+    const card = bingo.querySelector('.card');
+    if (!card) return;
+
+    let compact = document.getElementById('apiBingoPrediction');
+    if (!compact) {
+      compact = document.createElement('section');
+      compact.id = 'apiBingoPrediction';
+      compact.className = 'api-bingo-prediction';
+      const head = card.querySelector('.head');
+      if (head) head.insertAdjacentElement('afterend', compact);
+      else card.prepend(compact);
+    }
+    compact.innerHTML = compactPredictionMarkup(game, probability);
+    compact.classList.toggle('is-plus', isPlusMode());
+  }
+
   function ensureProbabilityCard() {
     const home = $('#home');
     if (!home) return null;
@@ -718,6 +770,39 @@
     }
 
     return card;
+  }
+
+  function bindPredictionActions(card) {
+    $('.api-refresh', card)?.addEventListener('click', loadLiveData);
+    const toggle = $('.api-detail-toggle', card);
+    const content = $('.api-detail-content', card);
+    if (!toggle || !content) return;
+
+    toggle.addEventListener('click', () => {
+      const willOpen = content.hidden;
+      content.hidden = !willOpen;
+      toggle.setAttribute('aria-expanded', String(willOpen));
+      toggle.innerHTML = willOpen
+        ? '상세 승부 예측 접기 <span aria-hidden="true">▲</span>'
+        : '상세 승부 예측 열기 <span aria-hidden="true">▼</span>';
+    });
+  }
+
+  function applyModeVisibility() {
+    const plus = isPlusMode();
+    const card = document.getElementById('apiLiveProbability');
+    if (card) {
+      const toggle = card.querySelector('.api-detail-toggle');
+      const content = card.querySelector('.api-detail-content');
+      if (toggle) toggle.hidden = !plus;
+      if (!plus && content) content.hidden = true;
+      if (!plus && toggle) {
+        toggle.setAttribute('aria-expanded', 'false');
+        toggle.innerHTML = '상세 승부 예측 열기 <span aria-hidden="true">▼</span>';
+      }
+    }
+    const compact = document.getElementById('apiBingoPrediction');
+    if (compact) compact.classList.toggle('is-plus', plus);
   }
 
   function renderProbability(game, probability, errorMessage = '') {
@@ -735,7 +820,7 @@
           <span>개발자 도구 Console과 Network에서 실제 응답을 확인할 수 있습니다.</span>
           <button class="api-refresh" type="button">다시 불러오기</button>
         </div>`;
-      $('.api-refresh', card)?.addEventListener('click', loadLiveData);
+      bindPredictionActions(card);
       return;
     }
 
@@ -744,6 +829,10 @@
     const awayTeam = probability.awayTeam || game.awayTeam;
     const homeTeam = probability.homeTeam || game.homeTeam;
     const hasExpectedScore = probability.expectedAwayScore !== null && probability.expectedHomeScore !== null;
+    const hasDetail = Boolean(
+      probability.comments.summary || probability.comments.starter ||
+      probability.comments.offense || probability.comments.bullpen || probability.commentary
+    );
 
     card.innerHTML = `
       <div class="api-live-head">
@@ -783,13 +872,8 @@
         <div class="api-prob-home" style="width:${home}%"><span>${home}%</span></div>
       </div>
 
-      <div class="api-winner-strip">
-        ${winnerBadge(probability.winners.starter)}
-        ${winnerBadge(probability.winners.offense)}
-        ${winnerBadge(probability.winners.bullpen)}
-      </div>
-
-      ${predictionDetailMarkup(probability)}
+      ${hasDetail ? `<button class="api-detail-toggle" type="button" aria-expanded="false">상세 승부 예측 열기 <span aria-hidden="true">▼</span></button>` : ''}
+      ${hasDetail ? predictionDetailMarkup(probability) : ''}
       ${predictionStarterMarkup(game, probability)}
 
       <div class="api-live-foot">
@@ -797,7 +881,9 @@
         <button class="api-refresh" type="button">새로고침</button>
       </div>`;
 
-    $('.api-refresh', card)?.addEventListener('click', loadLiveData);
+    bindPredictionActions(card);
+    renderBingoPrediction(game, probability);
+    applyModeVisibility();
   }
 
   async function loadLiveData() {
@@ -844,6 +930,10 @@
   }
 
   function start() {
+    const appRoot = document.getElementById('app');
+    if (appRoot) {
+      new MutationObserver(applyModeVisibility).observe(appRoot, { attributes: true, attributeFilter: ['class'] });
+    }
     loadLiveData();
     state.timer = window.setInterval(loadLiveData, CONFIG.refreshMs);
 
