@@ -41,7 +41,45 @@
   };
 
   const root = () => document.getElementById('heroHorrorApiRoot');
-  const isPlusMode = () => document.getElementById('app')?.classList.contains('mode-plus');
+
+  function normalizeMode(value) {
+    const mode = String(value ?? '').trim().toLowerCase();
+    if (['plus', 'play+', 'playplus', 'mode-plus', 'b', 'b안'].includes(mode)) return 'plus';
+    if (['play', 'normal', 'basic', 'mode-play', 'a', 'a안'].includes(mode)) return 'play';
+    return '';
+  }
+
+  function modeFromDom() {
+    const app = document.getElementById('app');
+    if (app?.classList.contains('mode-plus')) return 'plus';
+    if (app?.classList.contains('mode-play')) return 'play';
+
+    const appMode = normalizeMode(app?.dataset?.mode || app?.dataset?.playMode || document.body?.dataset?.mode);
+    if (appMode) return appMode;
+
+    const explicitPlus = document.querySelector([
+      '[data-mode="plus"].active', '[data-mode="play+"].active', '[data-mode="playplus"].active',
+      '[data-mode="plus"][aria-pressed="true"]', '[data-mode="plus"][aria-selected="true"]',
+      '#modePlus.active', '#playPlus.active', '#btnPlayPlus.active',
+    ].join(','));
+    if (explicitPlus) return 'plus';
+
+    const explicitPlay = document.querySelector([
+      '[data-mode="play"].active', '[data-mode="normal"].active',
+      '[data-mode="play"][aria-pressed="true"]', '[data-mode="play"][aria-selected="true"]',
+      '#modePlay.active', '#playMode.active', '#btnPlay.active',
+    ].join(','));
+    if (explicitPlay) return 'play';
+
+    const activeButtons = [...document.querySelectorAll('button.active, [role="tab"].active, button[aria-pressed="true"], [role="tab"][aria-selected="true"]')];
+    const activeText = activeButtons.map((button) => button.textContent.replace(/\s+/g, '').toLowerCase());
+    if (activeText.includes('play+')) return 'plus';
+    if (activeText.includes('play')) return 'play';
+
+    return 'play';
+  }
+
+  const isPlusMode = () => modeFromDom() === 'plus';
   const escapeHtml = (value) => String(value ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;').replace(/'/g, '&#039;');
@@ -881,11 +919,19 @@
   }
 
   window.KBOHeroHorror = { reload: load, render, getState: () => ({ ...state }) };
-  document.addEventListener('kbo:modechange', () => {
-    state.viewMode = isPlusMode() ? state.viewMode : 'recommend';
-    state.teamFilter = 'ALL';
-    state.fullLimit = 8;
-    render();
+  document.addEventListener('kbo:modechange', (event) => {
+    const eventMode = normalizeMode(event?.detail?.mode || event?.detail?.value || event?.detail?.playMode);
+
+    const rerenderForMode = () => {
+      const plusMode = eventMode ? eventMode === 'plus' : isPlusMode();
+      if (!plusMode) state.viewMode = 'recommend';
+      state.teamFilter = 'ALL';
+      state.fullLimit = 8;
+      render();
+    };
+
+    // 공통 앱이 버튼 활성 상태나 #app 클래스를 이벤트 이후에 바꾸는 경우까지 대응합니다.
+    requestAnimationFrame(() => requestAnimationFrame(rerenderForMode));
   });
   window.renderPlayers = render;
   window.choosePlayer = (id, type) => choose(String(type).toLowerCase(), String(id));
