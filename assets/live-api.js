@@ -472,46 +472,67 @@
     if (home === null || away === null) {
       debug('승리확률 필드 탐색 실패', payload);
       throw new Error(
-        '승부 예측 응답에서 home_win_pct 또는 away_win_pct 필드를 찾지 못했습니다. 개발자 도구 Console의 승리확률 API 응답을 확인하세요.'
+        '승부 예측 응답에서 home_win_pct 또는 away_win_pct 필드를 찾지 못했습니다.'
       );
     }
 
     const total = home + away;
-
     if (total > 0 && Math.abs(total - 100) > 0.5) {
       home = (home / total) * 100;
       away = (away / total) * 100;
     }
 
+    const winnersRaw = getByCandidates(raw, ['winners']) || {};
+    const commentsRaw = getByCandidates(raw, ['comment_strip', 'commentStrip']) || {};
+
+    const probabilityHomeTeam = teamNameValue(
+      getByCandidates(raw, ['home_team', 'homeTeam', 'home_team_name', 'homeTeamName']),
+      game.homeTeam
+    );
+    const probabilityAwayTeam = teamNameValue(
+      getByCandidates(raw, ['away_team', 'awayTeam', 'away_team_name', 'awayTeamName']),
+      game.awayTeam
+    );
+
+    const predictionAwayStarter = starterFromRaw(raw, 'away');
+    const predictionHomeStarter = starterFromRaw(raw, 'home');
+
     return {
       home: Math.max(0, Math.min(100, home)),
       away: Math.max(0, Math.min(100, away)),
-      homeTeam: teamNameValue(
-        getByCandidates(raw, ['home_team', 'homeTeam', 'home_team_name', 'homeTeamName']),
-        game.homeTeam
-      ),
-      awayTeam: teamNameValue(
-        getByCandidates(raw, ['away_team', 'awayTeam', 'away_team_name', 'awayTeamName']),
-        game.awayTeam
-      ),
+      homeTeam: probabilityHomeTeam,
+      awayTeam: probabilityAwayTeam,
+      expectedHomeScore: numberValue(getByCandidates(raw, [
+        'expected_home_score', 'expectedHomeScore', 'home_expected_score',
+      ])),
+      expectedAwayScore: numberValue(getByCandidates(raw, [
+        'expected_away_score', 'expectedAwayScore', 'away_expected_score',
+      ])),
+      commentary: textValue(getByCandidates(raw, ['commentary'])),
+      winners: {
+        summary: textValue(getByCandidates(winnersRaw, ['summary_winner', 'summaryWinner'])),
+        starter: textValue(getByCandidates(winnersRaw, ['starter_winner', 'starterWinner'])),
+        offense: textValue(getByCandidates(winnersRaw, ['offense_winner', 'offenseWinner'])),
+        bullpen: textValue(getByCandidates(winnersRaw, ['bullpen_winner', 'bullpenWinner'])),
+      },
+      comments: {
+        summary: textValue(getByCandidates(commentsRaw, ['summary'])),
+        starter: textValue(getByCandidates(commentsRaw, ['starter'])),
+        offense: textValue(getByCandidates(commentsRaw, ['offense'])),
+        bullpen: textValue(getByCandidates(commentsRaw, ['bullpen'])),
+      },
+      awayStarter: predictionAwayStarter.name || predictionAwayStarter.id
+        ? predictionAwayStarter
+        : game.awayStarter,
+      homeStarter: predictionHomeStarter.name || predictionHomeStarter.id
+        ? predictionHomeStarter
+        : game.homeStarter,
       inning: textValue(
-        getByCandidates(raw, [
-          'inning',
-          'current_inning',
-          'currentInning',
-          'inning_text',
-          'inningText',
-        ]),
+        getByCandidates(raw, ['inning', 'current_inning', 'currentInning', 'inning_text', 'inningText']),
         game.inning
       ),
-      homeScore:
-        numberValue(
-          getByCandidates(raw, ['home_score', 'homeScore', 'hscore'])
-        ) ?? game.homeScore,
-      awayScore:
-        numberValue(
-          getByCandidates(raw, ['away_score', 'awayScore', 'vscore'])
-        ) ?? game.awayScore,
+      homeScore: numberValue(getByCandidates(raw, ['home_score', 'homeScore', 'hscore'])) ?? game.homeScore,
+      awayScore: numberValue(getByCandidates(raw, ['away_score', 'awayScore', 'vscore'])) ?? game.awayScore,
       raw,
     };
   }
@@ -587,8 +608,8 @@
     }
 
     const starterHtml = [
-      starterMarkup(game.awayStarter, awayTeam),
-      starterMarkup(game.homeStarter, homeTeam),
+      starterMarkup(probability?.awayStarter || game.awayStarter, awayTeam),
+      starterMarkup(probability?.homeStarter || game.homeStarter, homeTeam),
     ].filter(Boolean).join('');
 
     starterRow.innerHTML = starterHtml;
@@ -621,6 +642,68 @@
     return `${balanceText}${starterText ? ` ${starterText}` : ''}`;
   }
 
+  function winnerBadge(team) {
+    if (!team) return '<span class="api-detail-badge is-neutral">비교</span>';
+    return `<span class="api-detail-badge">${escapeHtml(team)} 우세</span>`;
+  }
+
+  function detailItem(label, icon, text, winner) {
+    if (!text) return '';
+    return `
+      <article class="api-detail-item">
+        <div class="api-detail-item-head">
+          <strong><span aria-hidden="true">${icon}</span>${escapeHtml(label)}</strong>
+          ${winnerBadge(winner)}
+        </div>
+        <p>${escapeHtml(text)}</p>
+      </article>`;
+  }
+
+  function predictionDetailMarkup(probability) {
+    const details = [
+      detailItem('종합 전망', '⚾', probability.comments.summary, probability.winners.summary),
+      detailItem('선발 비교', '🔥', probability.comments.starter, probability.winners.starter),
+      detailItem('타선 비교', '📈', probability.comments.offense, probability.winners.offense),
+      detailItem('불펜 비교', '🛡️', probability.comments.bullpen, probability.winners.bullpen),
+    ].filter(Boolean).join('');
+
+    if (!details && !probability.commentary) return '';
+
+    return `
+      <section class="api-prediction-detail">
+        <div class="api-detail-title-row">
+          <h3>상세 승부 예측</h3>
+          <span>API 분석 결과</span>
+        </div>
+        ${details ? `<div class="api-detail-grid">${details}</div>` : ''}
+        ${probability.commentary ? `
+          <details class="api-full-commentary">
+            <summary>전체 분석 원문 보기</summary>
+            <p>${escapeHtml(probability.commentary).replaceAll('\\n', '<br>')}</p>
+          </details>` : ''}
+      </section>`;
+  }
+
+  function predictionStarterMarkup(game, probability) {
+    const awayStarter = probability.awayStarter || game.awayStarter;
+    const homeStarter = probability.homeStarter || game.homeStarter;
+    const awayTeam = probability.awayTeam || game.awayTeam;
+    const homeTeam = probability.homeTeam || game.homeTeam;
+    const cards = [
+      starterMarkup(awayStarter, awayTeam),
+      starterMarkup(homeStarter, homeTeam),
+    ].filter(Boolean).join('');
+
+    if (!cards) return '';
+    return `
+      <section class="api-prediction-starters">
+        <div class="api-detail-title-row">
+          <h3>오늘의 선발</h3>
+        </div>
+        <div class="api-prediction-starter-grid">${cards}</div>
+      </section>`;
+  }
+
   function ensureProbabilityCard() {
     const home = $('#home');
     if (!home) return null;
@@ -644,20 +727,14 @@
     if (errorMessage) {
       card.innerHTML = `
         <div class="api-live-head">
-          <div class="api-live-title">
-            <div>
-              <h2>승부 예측</h2>
-              <p>Spotistics 경기 예측 데이터</p>
-            </div>
-          </div>
+          <div class="api-live-title"><div><h2>승부 예측</h2><p>Spotistics 경기 예측 데이터</p></div></div>
           <span class="api-live-badge">연결 확인</span>
         </div>
-        <div class="api-error">${errorMessage}</div>
+        <div class="api-error">${escapeHtml(errorMessage)}</div>
         <div class="api-live-foot">
           <span>개발자 도구 Console과 Network에서 실제 응답을 확인할 수 있습니다.</span>
           <button class="api-refresh" type="button">다시 불러오기</button>
         </div>`;
-
       $('.api-refresh', card)?.addEventListener('click', loadLiveData);
       return;
     }
@@ -666,43 +743,57 @@
     const home = probability.home.toFixed(1);
     const awayTeam = probability.awayTeam || game.awayTeam;
     const homeTeam = probability.homeTeam || game.homeTeam;
+    const hasExpectedScore = probability.expectedAwayScore !== null && probability.expectedHomeScore !== null;
 
     card.innerHTML = `
       <div class="api-live-head">
         <div class="api-live-title">
           <div>
             <h2>승부 예측</h2>
-            <p>${escapeHtml(game.id)} · 경기 전 예측 모델 기준</p>
+            <p>${escapeHtml(awayTeam)} vs ${escapeHtml(homeTeam)} · 경기 전 예측 모델 기준</p>
           </div>
         </div>
         <span class="api-live-badge is-live">PREDICTION</span>
       </div>
-      <div class="api-prob-wrap">
-        <div class="api-prob-team">
+
+      <div class="api-match-prediction">
+        <div class="api-prediction-team is-away">
+          <div class="api-prediction-logo">${teamLogoMarkup(awayTeam, game.awayTeamCode)}</div>
           <strong>${escapeHtml(awayTeam)}</strong>
           <b>${away}%</b>
         </div>
-        <div
-          class="api-prob-track"
-          aria-label="승부 예측 ${awayTeam} ${away}%, ${homeTeam} ${home}%"
-        >
-          <div class="api-prob-away" style="width:${away}%"></div>
-          <div class="api-prob-home" style="width:${home}%"></div>
+
+        <div class="api-expected-score">
+          <span>예상 스코어</span>
+          ${hasExpectedScore
+            ? `<strong>${probability.expectedAwayScore.toFixed(1)} <em>:</em> ${probability.expectedHomeScore.toFixed(1)}</strong>`
+            : '<strong>예측 중</strong>'}
         </div>
-        <div class="api-prob-team">
+
+        <div class="api-prediction-team is-home">
+          <div class="api-prediction-logo">${teamLogoMarkup(homeTeam, game.homeTeamCode)}</div>
           <strong>${escapeHtml(homeTeam)}</strong>
           <b>${home}%</b>
         </div>
       </div>
-      <div class="api-prediction-commentary">
-        <span class="api-commentary-label">예측 코멘터리</span>
-        <p>${escapeHtml(predictionCommentary(game, probability))}</p>
+
+      <div class="api-prob-label">승리 확률</div>
+      <div class="api-prob-track api-prob-track-large" aria-label="승부 예측 ${awayTeam} ${away}%, ${homeTeam} ${home}%">
+        <div class="api-prob-away" style="width:${away}%"><span>${away}%</span></div>
+        <div class="api-prob-home" style="width:${home}%"><span>${home}%</span></div>
       </div>
+
+      <div class="api-winner-strip">
+        ${winnerBadge(probability.winners.starter)}
+        ${winnerBadge(probability.winners.offense)}
+        ${winnerBadge(probability.winners.bullpen)}
+      </div>
+
+      ${predictionDetailMarkup(probability)}
+      ${predictionStarterMarkup(game, probability)}
+
       <div class="api-live-foot">
-        <span>
-          ${escapeHtml(probability.inning || statusText(game))}
-          · ${state.lastUpdatedAt?.toLocaleTimeString('ko-KR') || ''} 기준
-        </span>
+        <span>${escapeHtml(awayTeam)} vs ${escapeHtml(homeTeam)} · ${state.lastUpdatedAt?.toLocaleTimeString('ko-KR') || ''} 기준</span>
         <button class="api-refresh" type="button">새로고침</button>
       </div>`;
 

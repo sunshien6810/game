@@ -1,67 +1,33 @@
-/* Spotistics 실데이터 연동 영역 */
+/* Spotistics 승부 예측 · PC/Mobile 반응형 */
 .api-live-card{
-  margin:0 0 18px;
-  padding:20px 22px;
-  border:1px solid color-mix(in srgb,var(--primary) 24%,var(--line));
-  border-radius:26px;
-  background:linear-gradient(135deg,color-mix(in srgb,var(--primary) 7%,#fff),#fff);
-  box-shadow:var(--shadow);
+  margin:0 0 18px;padding:24px;border:1px solid color-mix(in srgb,var(--primary) 24%,var(--line));
+  border-radius:28px;background:linear-gradient(135deg,color-mix(in srgb,var(--primary) 6%,#fff),#fff);
+  box-shadow:var(--shadow);overflow:hidden
 }
-.api-live-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;margin-bottom:16px}
-.api-live-title{display:flex;align-items:center;gap:10px}
-.api-live-title h2{margin:0;font-size:24px;letter-spacing:-.5px}
-.api-live-title p{margin:4px 0 0;color:var(--muted);font-size:14px}
+.api-live-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;margin-bottom:20px}
+.api-live-title h2{margin:0;font-size:26px;letter-spacing:-.7px}.api-live-title p{margin:5px 0 0;color:var(--muted);font-size:14px}
 .api-live-badge{display:inline-flex;align-items:center;gap:6px;padding:8px 11px;border-radius:999px;background:#fff;border:1px solid var(--line);font-size:12px;color:var(--muted);white-space:nowrap}
-.api-live-badge::before{content:"";width:8px;height:8px;border-radius:50%;background:#94a3b8}
-.api-live-badge.is-live::before{background:#16a34a;box-shadow:0 0 0 5px rgba(22,163,74,.12)}
-.api-prob-wrap{display:grid;grid-template-columns:auto minmax(160px,1fr) auto;gap:14px;align-items:center}
-.api-prob-team{min-width:92px}
-.api-prob-team:last-child{text-align:right}
-.api-prob-team strong{display:block;font-size:18px}
-.api-prob-team b{display:block;margin-top:3px;font-size:30px;color:var(--primary)}
-.api-prob-track{height:22px;display:flex;overflow:hidden;border-radius:999px;background:#e8eef7;border:1px solid var(--line)}
-.api-prob-away,.api-prob-home{height:100%;transition:width .35s ease}
-.api-prob-away{background:color-mix(in srgb,var(--primary) 45%,#94a3b8)}
-.api-prob-home{background:var(--primary)}
-.api-live-foot{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-top:14px;color:var(--muted);font-size:13px}
-.api-refresh{border:0;background:transparent;color:var(--primary);font-weight:950;padding:4px 0}
-.api-error{padding:13px 15px;border-radius:16px;background:#fff7ed;color:#9a3412;border:1px solid #fed7aa;font-size:14px;line-height:1.45}
-.game.api-loading{opacity:.78}
-.game .api-score{font-size:24px;color:var(--primary);margin:0 6px}
-.game .api-state{display:inline-flex;margin-left:8px;padding:4px 8px;border-radius:999px;background:color-mix(in srgb,var(--primary) 10%,#fff);color:var(--primary);font-size:12px;vertical-align:middle}
+.api-live-badge::before{content:"";width:8px;height:8px;border-radius:50%;background:#94a3b8}.api-live-badge.is-live::before{background:#16a34a;box-shadow:0 0 0 5px rgba(22,163,74,.12)}
+.api-match-prediction{display:grid;grid-template-columns:minmax(150px,1fr) minmax(180px,.8fr) minmax(150px,1fr);align-items:center;gap:20px;padding:10px 8px 18px}
+.api-prediction-team{display:flex;flex-direction:column;align-items:center;text-align:center;min-width:0}.api-prediction-logo{width:108px;height:82px;display:grid;place-items:center}.api-prediction-logo .api-team-logo{width:100%;height:100%;object-fit:contain}
+.api-prediction-team strong{font-size:19px;margin-top:8px}.api-prediction-team b{font-size:28px;margin-top:4px;color:var(--primary)}
+.api-expected-score{text-align:center}.api-expected-score span{display:block;color:var(--muted);font-size:14px;font-weight:800}.api-expected-score strong{display:block;margin-top:8px;font-size:36px;letter-spacing:-1px}.api-expected-score em{font-style:normal;color:var(--muted);margin:0 8px}
+.api-prob-label{font-size:13px;font-weight:900;color:var(--muted);margin:0 0 7px}.api-prob-track{display:flex;overflow:hidden;border-radius:999px;background:#e8eef7;border:1px solid var(--line)}
+.api-prob-track-large{height:48px}.api-prob-away,.api-prob-home{height:100%;transition:width .35s ease;display:flex;align-items:center}.api-prob-away{background:color-mix(in srgb,var(--primary) 55%,#64748b);justify-content:flex-start}.api-prob-home{background:var(--primary);justify-content:flex-end}.api-prob-away span,.api-prob-home span{padding:0 16px;color:#fff;font-size:22px;font-weight:950;white-space:nowrap}
+.api-winner-strip{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}.api-detail-badge{display:inline-flex;align-items:center;padding:6px 10px;border-radius:999px;background:color-mix(in srgb,var(--primary) 10%,#fff);color:var(--primary);font-size:12px;font-weight:900;border:1px solid color-mix(in srgb,var(--primary) 16%,var(--line))}.api-detail-badge.is-neutral{color:var(--muted);background:#f6f8fb;border-color:var(--line)}
+.api-prediction-detail,.api-prediction-starters{margin-top:20px;padding-top:20px;border-top:1px solid var(--line)}.api-detail-title-row{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px}.api-detail-title-row h3{margin:0;font-size:18px}.api-detail-title-row>span{font-size:12px;color:var(--muted)}
+.api-detail-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.api-detail-item{padding:16px;border:1px solid var(--line);border-radius:18px;background:color-mix(in srgb,var(--primary) 3%,#fff)}.api-detail-item-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:9px}.api-detail-item-head strong{display:flex;align-items:center;gap:7px;font-size:15px}.api-detail-item p{margin:0;color:var(--text);font-size:14px;line-height:1.65;word-break:keep-all}
+.api-full-commentary{margin-top:12px;border:1px solid var(--line);border-radius:16px;background:#fff}.api-full-commentary summary{cursor:pointer;padding:13px 15px;font-weight:900;font-size:13px;color:var(--primary)}.api-full-commentary p{margin:0;padding:0 15px 15px;color:var(--text);font-size:14px;line-height:1.7}
+.api-prediction-starter-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.api-prediction-starter-grid .api-starter-card{justify-content:center;padding:13px}.api-prediction-starter-grid .api-starter-photo{width:58px;height:58px;flex-basis:58px}
+.api-live-foot{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-top:18px;color:var(--muted);font-size:13px}.api-refresh{border:0;background:transparent;color:var(--primary);font-weight:950;padding:4px 0}.api-error{padding:13px 15px;border-radius:16px;background:#fff7ed;color:#9a3412;border:1px solid #fed7aa;font-size:14px;line-height:1.45}
+.game.api-loading{opacity:.78}.game .api-score{font-size:24px;color:var(--primary);margin:0 6px}.game .api-state{display:inline-flex;margin-left:8px;padding:4px 8px;border-radius:999px;background:color-mix(in srgb,var(--primary) 10%,#fff);color:var(--primary);font-size:12px;vertical-align:middle}
+.api-logo-box{display:grid;place-items:center;overflow:hidden;background:#fff}.api-team-logo{width:72%;height:72%;object-fit:contain;display:block}.api-logo-fallback{display:grid;place-items:center;width:100%;height:100%;font-size:30px}
+.api-starter-row{display:flex;gap:12px;flex-wrap:wrap;margin-top:12px}.api-starter-card{display:flex;align-items:center;gap:10px;padding:9px 12px;border:1px solid var(--line);border-radius:16px;background:rgba(255,255,255,.82)}.api-starter-photo{width:42px;height:42px;border-radius:50%;overflow:hidden;background:#eef3fb;display:grid;place-items:center;flex:0 0 42px}.api-starter-photo img{width:100%;height:100%;object-fit:cover;display:block}.api-player-fallback{width:100%;height:100%;place-items:center;font-size:20px}.api-starter-card small{display:block;color:var(--muted);font-size:11px;margin-bottom:2px}.api-starter-card strong{display:block;font-size:14px}
 @media(max-width:700px){
-  .api-live-card{padding:17px 15px;border-radius:22px}
-  .api-live-head{align-items:center}
-  .api-live-title h2{font-size:20px}
-  .api-live-badge{padding:7px 9px}
-  .api-prob-wrap{grid-template-columns:1fr 1fr;gap:10px}
-  .api-prob-track{grid-column:1/-1;grid-row:2;height:18px}
-  .api-prob-team{min-width:0}
-  .api-prob-team b{font-size:25px}
-  .api-live-foot{align-items:flex-start;flex-direction:column}
+  .api-live-card{padding:17px 14px;border-radius:22px}.api-live-head{align-items:center;margin-bottom:14px}.api-live-title h2{font-size:21px}.api-live-title p{font-size:12px}.api-live-badge{padding:6px 8px;font-size:10px}
+  .api-match-prediction{grid-template-columns:1fr auto 1fr;gap:8px;padding:4px 0 14px}.api-prediction-logo{width:66px;height:54px}.api-prediction-team strong{font-size:14px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.api-prediction-team b{font-size:22px}.api-expected-score span{font-size:11px}.api-expected-score strong{font-size:23px}.api-expected-score em{margin:0 3px}
+  .api-prob-track-large{height:40px}.api-prob-away span,.api-prob-home span{padding:0 9px;font-size:17px}.api-winner-strip{gap:6px}.api-detail-badge{font-size:10px;padding:5px 8px}
+  .api-detail-grid{grid-template-columns:1fr;gap:9px}.api-detail-item{padding:13px;border-radius:15px}.api-detail-item p{font-size:13px;line-height:1.6}.api-detail-title-row h3{font-size:16px}.api-detail-title-row>span{display:none}
+  .api-prediction-starter-grid,.api-starter-row{grid-template-columns:1fr 1fr;display:grid;gap:8px}.api-prediction-starter-grid .api-starter-card{padding:9px;justify-content:flex-start}.api-prediction-starter-grid .api-starter-photo{width:42px;height:42px;flex-basis:42px}.api-starter-card{padding:8px 9px;min-width:0}.api-starter-card strong{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90px}.api-live-foot{align-items:flex-start;flex-direction:column;font-size:11px}
 }
-
-
-/* 팀 엠블럼 / 선발투수 / 예측 코멘터리 */
-.api-logo-box{display:grid;place-items:center;overflow:hidden;background:#fff}
-.api-team-logo{width:72%;height:72%;object-fit:contain;display:block}
-.api-logo-fallback{display:grid;place-items:center;width:100%;height:100%;font-size:30px}
-.api-starter-row{display:flex;gap:12px;flex-wrap:wrap;margin-top:12px}
-.api-starter-card{display:flex;align-items:center;gap:10px;padding:9px 12px;border:1px solid var(--line);border-radius:16px;background:rgba(255,255,255,.82)}
-.api-starter-photo{width:42px;height:42px;border-radius:50%;overflow:hidden;background:#eef3fb;display:grid;place-items:center;flex:0 0 42px}
-.api-starter-photo img{width:100%;height:100%;object-fit:cover;display:block}
-.api-player-fallback{width:100%;height:100%;place-items:center;font-size:20px}
-.api-starter-card small{display:block;color:var(--muted);font-size:11px;margin-bottom:2px}
-.api-starter-card strong{display:block;font-size:14px}
-.api-prediction-commentary{margin-top:16px;padding:14px 16px;border-radius:18px;background:color-mix(in srgb,var(--primary) 7%,#fff);border:1px solid color-mix(in srgb,var(--primary) 16%,var(--line))}
-.api-commentary-label{display:inline-block;margin-bottom:5px;font-size:12px;font-weight:900;color:var(--primary)}
-.api-prediction-commentary p{margin:0;font-size:14px;line-height:1.55;color:var(--text)}
-@media(max-width:700px){
-  .api-team-logo{width:68%;height:68%}
-  .api-starter-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-  .api-starter-card{padding:8px 9px;min-width:0}
-  .api-starter-photo{width:36px;height:36px;flex-basis:36px}
-  .api-starter-card strong{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90px}
-  .api-prediction-commentary{padding:12px 13px}
-  .api-prediction-commentary p{font-size:13px}
-}
+@media(max-width:380px){.api-live-card{padding-left:11px;padding-right:11px}.api-prediction-logo{width:56px;height:46px}.api-prediction-team b{font-size:19px}.api-expected-score strong{font-size:20px}.api-prob-away span,.api-prob-home span{font-size:15px;padding:0 7px}}
