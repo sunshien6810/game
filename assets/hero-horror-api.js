@@ -32,6 +32,7 @@
     horror: null,
     loading: true,
     error: null,
+    detailCache: new Map(),
   };
 
   const root = () => document.getElementById('heroHorrorApiRoot');
@@ -448,8 +449,8 @@
     const away = state.players.find((p) => p.starter && p.teamCode === state.game.awayCode);
     const home = state.players.find((p) => p.starter && p.teamCode === state.game.homeCode);
     if (!away && !home) return '';
-    const one = (player) => player ? `<div class="hh-starter-player">${imageMarkup(player, 'hh-starter-photo')}<div><small>${escapeHtml(player.teamName)}</small><b>${escapeHtml(player.name)}</b><span>ERA ${format2(player.season.era)} · WHIP ${format2(player.season.whip)}</span></div></div>` : '<div class="hh-starter-player empty">선발 미정</div>';
-    return `<section class="hh-starter-section plus-only"><div class="hh-section-title"><div><small>STARTING PITCHERS</small><h3>오늘의 선발 맞대결</h3></div></div><div class="hh-starter-matchup">${one(away)}<strong>VS</strong>${one(home)}</div></section>`;
+    const one = (player) => player ? `<button type="button" class="hh-starter-player" data-detail="${player.id}" aria-label="${escapeHtml(player.name)} 상세 보기">${imageMarkup(player, 'hh-starter-photo')}<div><small>${escapeHtml(player.teamName)}</small><b>${escapeHtml(player.name)}</b><span>ERA ${format2(player.season.era)} · WHIP ${format2(player.season.whip)}</span><em>최근 등판 상세 보기</em></div></button>` : '<div class="hh-starter-player empty">선발 미정</div>';
+    return `<section class="hh-starter-section plus-only"><div class="hh-section-title"><div><small>STARTING PITCHERS</small><h3>오늘의 선발 맞대결</h3></div><span>선수를 누르면 최근 3·7·15경기 기록을 확인할 수 있습니다.</span></div><div class="hh-starter-matchup">${one(away)}<strong>VS</strong>${one(home)}</div></section>`;
   }
 
   function selectionBar() {
@@ -503,8 +504,8 @@
     bindImageFallbacks();
   }
 
-  function bindImageFallbacks() {
-    root()?.querySelectorAll('.hh-image-shell img').forEach((img) => {
+  function bindImageFallbacks(scope = document) {
+    scope.querySelectorAll?.('.hh-image-shell img').forEach((img) => {
       const shell = img.closest('.hh-image-shell');
       const fail = () => {
         img.style.display = 'none';
@@ -530,20 +531,129 @@
     render();
   }
 
-  function showDetail(player) {
+  function detailElements() {
+    return {
+      body: document.getElementById('detailBody') || document.getElementById('detailContent'),
+      title: document.getElementById('detailTitle'),
+      sheet: document.getElementById('detailSheet'),
+      overlay: document.getElementById('overlay'),
+    };
+  }
+
+  function openDetailSheet(player, html) {
+    const { body, title, sheet, overlay } = detailElements();
+    if (!body || !sheet || !overlay) {
+      console.error('[Hero/Horror] 상세 시트 DOM을 찾지 못했습니다.');
+      window.showToast?.('상세 화면을 열 수 없습니다.');
+      return false;
+    }
+    if (title) title.textContent = `${player.name} 상세`;
+    body.innerHTML = html;
+    overlay.classList.add('open');
+    sheet.classList.add('open');
+    bindImageFallbacks(sheet);
+    return true;
+  }
+
+  function statCards(rows) {
+    return `<div class="newsgrid hh-detail-grid">${rows.map(([label, value]) => `<div class="newscard"><strong>${escapeHtml(label)}</strong><b>${escapeHtml(value)}</b></div>`).join('')}</div>`;
+  }
+
+  function fullSeasonRows(player) {
+    if (player.type === 'batter') {
+      return [
+        ['경기', player.season.games ?? '—'], ['타석', player.season.pa ?? '—'],
+        ['타율', format3(player.season.avg)], ['출루율', format3(player.season.obp)],
+        ['장타율', format3(player.season.slg)], ['OPS', format3(player.season.ops)],
+        ['홈런', player.season.hr ?? '—'], ['타점', player.season.rbi ?? '—'],
+        ['득점', player.season.run ?? '—'], ['도루', player.season.steal ?? '—'],
+        ['삼진', player.season.k ?? '—'], ['병살', player.season.dpo ?? '—'],
+      ];
+    }
+    return [
+      ['경기', player.season.games ?? '—'], ['승-패', `${player.season.win ?? 0}-${player.season.lose ?? 0}`],
+      ['ERA', format2(player.season.era)], ['WHIP', format2(player.season.whip)],
+      ['이닝', player.season.inn || '—'], ['탈삼진', player.season.k ?? '—'],
+      ['K/9', format2(player.season.k9)], ['QS', player.season.qs ?? '—'],
+      ['홀드', player.season.hold ?? '—'], ['세이브', player.season.save ?? '—'],
+      ['볼넷', player.season.bb ?? '—'], ['피홈런', player.season.hr ?? '—'],
+    ];
+  }
+
+  function batterRecentRows(player) {
+    return [
+      ['경기', player.recent.games ?? '—'], ['타석', player.recent.pa ?? '—'],
+      ['타율', format3(player.recent.avg)], ['OPS', format3(player.recent.ops)],
+      ['홈런', player.recent.hr ?? '—'], ['삼진', player.recent.k ?? '—'],
+    ];
+  }
+
+  function inningsText(row) {
+    const inning = numberValue(row?.inning);
+    const sub = numberValue(row?.inning_sub);
+    if (inning === null) return '—';
+    return sub ? `${inning}.${sub}` : String(inning);
+  }
+
+  function normalizePitcherSplits(payload) {
+    const split = Array.isArray(payload?.season_split) ? payload.season_split[0] : null;
+    const rows = split?.pit?.last;
+    if (!Array.isArray(rows)) return [];
+    return rows.map((row) => ({
+      games: numberValue(row.games), detail: textValue(row.split_detail), innings: inningsText(row),
+      win: numberValue(row.win), lose: numberValue(row.lose), era: numberValue(row.era),
+      whip: numberValue(row.whip), k: numberValue(row.k), hits: numberValue(row.hits),
+      bb: numberValue(row.bb), hr: numberValue(row.hr), avg: numberValue(row.avg),
+    })).sort((a, b) => Number(a.detail) - Number(b.detail));
+  }
+
+  async function fetchPitcherDetail(player) {
+    if (state.detailCache.has(player.id)) return state.detailCache.get(player.id);
+    const url = `${CONFIG.baseUrl}/kbo/player/season_split?player_id=${encodeURIComponent(player.pid)}&season=${state.game.season}&split_type=season&split_type=last`;
+    const payload = await fetchJson(url, `${player.name} 최근 전적 API`);
+    const result = normalizePitcherSplits(payload);
+    state.detailCache.set(player.id, result);
+    return result;
+  }
+
+  function detailHeader(player) {
+    return `<div class="hh-detail-head">${imageMarkup(player, 'hh-detail-photo')}<div><small>${escapeHtml(player.teamName)}</small><h3>${escapeHtml(player.name)}</h3><p>${escapeHtml(player.position)}${player.side ? ` · ${escapeHtml(player.side)}` : ''}${player.number ? ` · #${escapeHtml(player.number)}` : ''}</p></div></div>`;
+  }
+
+  function aiDetail(player) {
+    const ranks = player.ranks.slice(0, 4).map((r) => `${STAT_LABELS[r.key] || r.key} 팀 ${r.rank}위`).join(' · ');
+    return `<div class="ai-note hh-detail-ai"><b>AI Hero ${player.heroScore} · Horror Risk ${player.horrorScore}</b><br>${escapeHtml(player.heroReasons.join(' · '))}${ranks ? `<br><span>${escapeHtml(ranks)}</span>` : ''}</div>`;
+  }
+
+  async function showDetail(player) {
     if (!player) return;
-    const detail = document.getElementById('detailContent');
-    if (!detail) return;
-    const stats = statsFor(player);
-    const recent = player.type === 'batter' ? [
-      ['최근 경기', player.recent.games ?? '—'], ['최근 PA', player.recent.pa ?? '—'],
-      ['최근 AVG', format3(player.recent.avg)], ['최근 OPS', format3(player.recent.ops)],
-      ['최근 HR', player.recent.hr ?? '—'], ['최근 K', player.recent.k ?? '—'],
-    ] : [];
-    detail.innerHTML = `<div class="hh-detail-head">${imageMarkup(player, 'hh-detail-photo')}<div><h3>${escapeHtml(player.name)}</h3><p>${escapeHtml(player.teamName)} · ${escapeHtml(player.position)}</p></div></div><h4>시즌 기록</h4><div class="newsgrid">${stats.map(([label, value]) => `<div class="newscard"><strong>${label}</strong><b>${value}</b></div>`).join('')}</div>${recent.length ? `<h4>최근 7경기</h4><div class="newsgrid">${recent.map(([label, value]) => `<div class="newscard"><strong>${label}</strong><b>${value}</b></div>`).join('')}</div>` : ''}<div class="ai-note"><b>AI Hero ${player.heroScore} · Horror Risk ${player.horrorScore}</b><br>${escapeHtml(player.heroReasons.join(' · '))}</div>`;
-    document.getElementById('overlay')?.classList.add('open');
-    document.getElementById('detailSheet')?.classList.add('open');
-    bindImageFallbacks();
+    const loadingHtml = `${detailHeader(player)}<div class="hh-detail-loading"><span></span><b>상세 데이터를 불러오고 있습니다.</b></div>`;
+    if (!openDetailSheet(player, loadingHtml)) return;
+
+    try {
+      let html = `${detailHeader(player)}<h4>시즌 상세 기록</h4>${statCards(fullSeasonRows(player))}`;
+      if (player.type === 'batter') {
+        html += `<h4>최근 7경기</h4>${statCards(batterRecentRows(player))}`;
+      } else {
+        const splits = await fetchPitcherDetail(player);
+        if (splits.length) {
+          html += `<h4>최근 등판 구간</h4><div class="hh-split-list">${splits.map((row) => `<section class="hh-split-card"><div><small>최근 ${escapeHtml(row.detail || row.games || '')}경기</small><strong>${row.win ?? 0}승 ${row.lose ?? 0}패</strong></div>${statCards([
+            ['ERA', format2(row.era)], ['WHIP', format2(row.whip)], ['이닝', row.innings], ['탈삼진', row.k ?? '—'], ['피안타', row.hits ?? '—'], ['피안타율', format3(row.avg)],
+          ])}</section>`).join('')}</div>`;
+        } else {
+          html += '<div class="hh-detail-empty">최근 등판 상세 데이터가 없습니다.</div>';
+        }
+      }
+      html += aiDetail(player);
+      const { body, sheet } = detailElements();
+      if (body) body.innerHTML = html;
+      if (sheet) bindImageFallbacks(sheet);
+    } catch (error) {
+      console.error('[Hero/Horror detail]', error);
+      const { body, sheet } = detailElements();
+      if (body) body.innerHTML = `${detailHeader(player)}<h4>시즌 상세 기록</h4>${statCards(fullSeasonRows(player))}<div class="hh-detail-warning">최근 전적 API를 불러오지 못했습니다. 시즌 기록은 정상적으로 표시했습니다.<br><small>${escapeHtml(error.message || '')}</small></div>${aiDetail(player)}`;
+      if (sheet) bindImageFallbacks(sheet);
+    }
   }
 
   function bindEvents() {
