@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex,nofollow" />
+  <title>KBO Play CMS</title>
+  <link rel="stylesheet" href="./assets/admin.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar">
+      <div class="brand"><div class="brand-mark">K</div><div><strong>KBO PLAY</strong><span>CONTENT MANAGEMENT</span></div></div>
+      <nav class="nav" aria-label="CMS 메뉴">
+        <button class="nav-item active" data-page="users"><span class="nav-icon">👥</span><span>베타 회원 관리</span></button>
+        <button class="nav-item" data-page="missions"><span class="nav-icon">🎯</span><span>미션 콘텐츠 관리</span></button>
+        <button class="nav-item" data-page="game-missions"><span class="nav-icon">⚾</span><span>경기별 미션 구성</span></button>
+        <button class="nav-item" data-page="participation"><span class="nav-icon">📊</span><span>참여 현황</span></button>
+        <button class="nav-item" data-page="hero-horror"><span class="nav-icon">⭐</span><span>Hero / Horror</span></button>
+        <div class="nav-divider"></div>
+        <button class="nav-item" data-page="admins"><span class="nav-icon">🛡️</span><span>관리자 관리</span></button>
+        <button class="nav-item" data-page="settings"><span class="nav-icon">⚙️</span><span>설정</span></button>
+      </nav>
+      <div class="sidebar-footer"><div class="profile-mini"><div class="avatar">A</div><div><strong>시스템 관리자</strong><span>SUPER_ADMIN</span></div></div></div>
+    </aside>
+    <main class="main">
+      <header class="topbar">
+        <div class="topbar-left"><button class="mobile-menu" id="mobileMenu" aria-label="메뉴 열기">☰</button><div><h1 id="pageTitle">베타 회원 관리</h1><p id="pageDesc">베타 서비스 사용자를 등록하고 로그인 상태를 관리합니다.</p></div></div>
+        <div class="topbar-right"><a class="front-link" href="../app.html" target="_blank">사용자 화면 열기 ↗</a><button class="icon-button" title="알림">🔔</button><button class="profile-button"><span class="avatar small">A</span><span>관리자</span><span class="chevron">⌄</span></button></div>
+      </header>
+      <section class="content">
+        <div id="users" class="page active">
+          <div class="summary-grid">
+            <article class="summary-card"><span>전체 회원</span><strong>24</strong><small>베타 등록 사용자</small></article>
+            <article class="summary-card"><span>활성 회원</span><strong>21</strong><small>현재 로그인 가능</small></article>
+            <article class="summary-card"><span>최초 로그인 전</span><strong>5</strong><small>임시 비밀번호 상태</small></article>
+            <article class="summary-card"><span>최근 7일 로그인</span><strong>16</strong><small>전체의 66.7%</small></article>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><div><h2>회원 목록</h2><p>관리자가 직접 등록한 베타 사용자를 관리합니다.</p></div><button class="primary-button" data-modal="userModal">+ 회원 등록</button></div>
+            <div class="toolbar"><div class="search-box"><span>⌕</span><input id="userSearch" type="search" placeholder="아이디, 이름, 닉네임 검색" /></div><select id="userStatus"><option value="">전체 상태</option><option value="ACTIVE">활성</option><option value="INACTIVE">비활성</option><option value="LOCKED">잠금</option></select><button class="secondary-button">검색</button></div>
+            <div class="table-wrap"><table><thead><tr><th>로그인 ID</th><th>이름 / 닉네임</th><th>그룹</th><th>상태</th><th>최초 로그인</th><th>최근 로그인</th><th>등록일</th><th></th></tr></thead><tbody id="userTable"></tbody></table></div>
+            <div class="pagination"><button disabled>‹</button><button class="active">1</button><button>2</button><button>3</button><button>›</button></div>
+          </div>
+        </div>
+        <div id="missions" class="page">
+          <div class="panel"><div class="panel-head"><div><h2>미션 콘텐츠</h2><p>미션 빙고에서 재사용할 원본 콘텐츠와 판정 조건을 관리합니다.</p></div><button class="primary-button" data-modal="missionModal">+ 미션 등록</button></div>
+            <div class="toolbar"><div class="search-box"><span>⌕</span><input type="search" placeholder="미션명 또는 코드 검색" /></div><select><option>전체 카테고리</option><option>투수</option><option>타자</option><option>팀</option><option>경기</option></select><select><option>전체 상태</option><option>사용</option><option>미사용</option></select><button class="secondary-button">검색</button></div>
+            <div class="mission-grid" id="missionGrid"></div>
+          </div>
+        </div>
+        <div id="game-missions" class="page">
+          <div class="panel"><div class="panel-head"><div><h2>경기별 미션 구성</h2><p>외부 경기 API에서 경기를 선택하고 노출할 미션을 편성합니다.</p></div><button class="primary-button">+ 경기 미션 구성</button></div>
+            <div class="game-selector"><div class="date-selector"><button>‹</button><strong>2026. 07. 24</strong><button>›</button></div><div class="game-list"><button class="game-card selected"><span class="game-time">18:30</span><strong>LG <em>vs</em> KIA</strong><small>잠실 · 미션 9개</small></button><button class="game-card"><span class="game-time">18:30</span><strong>두산 <em>vs</em> 삼성</strong><small>대구 · 미션 미구성</small></button><button class="game-card"><span class="game-time">18:30</span><strong>롯데 <em>vs</em> 한화</strong><small>대전 · 미션 9개</small></button></div></div>
+            <div class="split-layout"><div class="mission-pool"><h3>미션 후보</h3><div class="search-box"><span>⌕</span><input type="search" placeholder="미션 검색" /></div><div id="missionPool"></div></div><div class="bingo-editor"><div class="bingo-head"><div><h3>LG vs KIA 미션 빙고</h3><p>드래그하여 3×3 순서를 구성합니다.</p></div><span class="status-badge draft">임시저장</span></div><div class="bingo-grid" id="bingoGrid"></div><div class="panel-actions"><button class="secondary-button">임시저장</button><button class="primary-button">게시하기</button></div></div></div>
+          </div>
+        </div>
+        <div id="participation" class="page"><div class="empty-state"><div class="empty-icon">📊</div><h2>참여 현황 화면</h2><p>회원 및 경기별 미션 참여 현황은 API 연결 단계에서 구성합니다.</p><span>CMS Prototype</span></div></div>
+        <div id="hero-horror" class="page"><div class="empty-state"><div class="empty-icon">⭐</div><h2>Hero / Horror 관리</h2><p>선택 현황과 자동 판정, 관리자 확정 기능을 이후 연결합니다.</p><span>CMS Prototype</span></div></div>
+        <div id="admins" class="page"><div class="panel"><div class="panel-head"><div><h2>관리자 계정</h2><p>CMS 접근 계정과 권한을 관리합니다.</p></div><button class="primary-button">+ 관리자 등록</button></div><div class="table-wrap"><table><thead><tr><th>로그인 ID</th><th>관리자명</th><th>권한</th><th>상태</th><th>최근 로그인</th><th>등록일</th></tr></thead><tbody><tr><td><strong>admin</strong></td><td>시스템 관리자</td><td><span class="status-badge purple">SUPER_ADMIN</span></td><td><span class="status-badge active">활성</span></td><td>2026-07-24 09:10</td><td>2026-07-23</td></tr></tbody></table></div></div></div>
+        <div id="settings" class="page"><div class="panel settings-panel"><h2>서비스 설정</h2><div class="setting-row"><div><strong>베타 서비스 운영</strong><p>사용자 프론트의 참여 기능을 활성화합니다.</p></div><label class="switch"><input type="checkbox" checked><span></span></label></div><div class="setting-row"><div><strong>미션 제출 마감</strong><p>경기 시작 시간에 자동으로 제출을 마감합니다.</p></div><label class="switch"><input type="checkbox" checked><span></span></label></div><div class="setting-row"><div><strong>Hero / Horror 노출</strong><p>사용자 프론트에 Hero / Horror 선택 기능을 노출합니다.</p></div><label class="switch"><input type="checkbox"><span></span></label></div></div></div>
+      </section>
+    </main>
+  </div>
+  <div class="modal" id="userModal" aria-hidden="true"><div class="modal-backdrop" data-close></div><div class="modal-card"><div class="modal-head"><div><h2>베타 회원 등록</h2><p>회원가입 없이 관리자가 로그인 계정을 발급합니다.</p></div><button data-close>×</button></div><form id="userForm"><div class="form-grid"><label><span>로그인 ID *</span><input name="loginId" required placeholder="예: tester01"></label><label><span>이름 *</span><input name="name" required placeholder="사용자 이름"></label><label><span>닉네임 *</span><input name="nickname" required placeholder="서비스 노출 닉네임"></label><label><span>사용자 그룹</span><select name="group"><option>INTERNAL</option><option>PARTNER</option><option>TESTER</option></select></label><label class="full"><span>임시 비밀번호 *</span><input name="password" type="password" required value="Temp1234!"></label><label class="full"><span>관리자 메모</span><textarea name="memo" rows="3" placeholder="테스트 목적, 소속 등"></textarea></label></div><div class="modal-actions"><button type="button" class="secondary-button" data-close>취소</button><button class="primary-button" type="submit">등록</button></div></form></div></div>
+  <div class="modal" id="missionModal" aria-hidden="true"><div class="modal-backdrop" data-close></div><div class="modal-card large"><div class="modal-head"><div><h2>미션 콘텐츠 등록</h2><p>경기별 미션 구성에서 재사용할 콘텐츠를 만듭니다.</p></div><button data-close>×</button></div><form id="missionForm"><div class="form-grid"><label><span>미션 코드 *</span><input name="code" required placeholder="PITCHER_SO_7"></label><label><span>미션명 *</span><input name="name" required placeholder="선발투수 7탈삼진 이상"></label><label><span>유형 *</span><select name="type"><option>PLAYER</option><option>TEAM</option><option>GAME</option></select></label><label><span>카테고리 *</span><select name="category"><option>PITCHER</option><option>BATTER</option><option>TEAM</option><option>GAME</option></select></label><label><span>통계 코드 *</span><input name="stat" required placeholder="STRIKEOUT"></label><label><span>비교 조건 *</span><select name="operator"><option>GTE</option><option>LTE</option><option>EQ</option><option>GT</option><option>LT</option></select></label><label><span>기준값</span><input name="threshold" type="number" value="7"></label><label><span>난이도</span><select name="difficulty"><option>EASY</option><option selected>NORMAL</option><option>HARD</option></select></label><label class="full"><span>설명</span><textarea name="description" rows="3" placeholder="사용자에게 노출할 설명"></textarea></label></div><div class="modal-actions"><button type="button" class="secondary-button" data-close>취소</button><button class="primary-button" type="submit">등록</button></div></form></div></div>
+  <div class="toast" id="toast"></div>
+  <script src="./assets/admin.js"></script>
+</body>
+</html>
